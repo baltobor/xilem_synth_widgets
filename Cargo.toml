@@ -1,0 +1,20 @@
+[package]
+name = "xilem_synth_widgets"
+version = "0.1.0"
+edition = "2024"
+authors = ["Jacek Wisniowski"]
+license = "Apache-2.0"
+description = "Synth-style UI widgets for Xilem: knobs, faders, scopes, selectors, and more"
+
+[dependencies]
+xilem = "0.4"
+tracing = "0.1"
+smallvec = "1"
+triple_buffer = "8"
+
+[dev-dependencies]
+cpal = "0.16"
+
+[[example]]
+name = "demo"
+path = "examples/demo.rs"
