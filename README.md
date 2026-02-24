@@ -1,8 +1,16 @@
-# xilem_synth_widgets
+# Xilem Synth Widgets
 
 Synthesizer-style UI widgets for [Xilem](https://github.com/linebender/xilem): knobs, faders, oscilloscope, and more.
 
-A collection of audio/synth-themed controls designed for music applications, built on Xilem 0.4.
+A collection of audio/synth-themed controls designed for music applications, built on [Xilem](https://github.com/linebender/xilem) 0.4.0
+
+<img width="802" height="385" alt="XilemSynthWidgetsArch" src="https://github.com/user-attachments/assets/fc890b15-2c6d-4ad0-8915-830a8678edad" />
+
+This screenshot was taken on Arch linux
+
+Tested on 
+- MacOS Tahoe 26.3
+- Arch linux and Cosmic
 
 ## Usage
 
@@ -96,6 +104,13 @@ See `examples/demo.rs` for a complete synthesizer demo with audio output.
 ```sh
 cargo run --example demo
 ```
+
+## Motivation
+
+I tried to keep the code as compact and clean as possible. Not only to make it readable, but above all to show how simple it is to program beautiful UIs with Xilem. The framework is still very young, but I am already convinced that it allows you to work very quickly and build great UIs.
+And now I am looking forward to seeing lots of beautiful applications. ;-) 
+
+Thank you very much, Xilem team! I've been waiting for this for so long! And now it's there.
 
 ## License
 
