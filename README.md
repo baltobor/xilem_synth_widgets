@@ -12,6 +12,12 @@ Tested on
 - MacOS Tahoe 26.3
 - Arch linux and Cosmic
 
+## Run demo
+
+```shell
+cargo run --example demo
+```
+
 ## Usage
 
 ```rust
