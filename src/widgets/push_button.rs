@@ -7,14 +7,16 @@
 
 use xilem::masonry::accesskit::{Node, Role};
 use xilem::masonry::core::{
-    AccessCtx, BoxConstraints, EventCtx, LayoutCtx, PaintCtx, PointerButtonEvent, PointerEvent,
-    PropertiesMut, PropertiesRef, RegisterCtx, Update, UpdateCtx, Widget, WidgetId, WidgetMut,
+    AccessCtx, ChildrenIds, EventCtx, LayoutCtx, MeasureCtx, PaintCtx, PointerButtonEvent,
+    PointerEvent, PropertiesMut, PropertiesRef, RegisterCtx, Update, UpdateCtx, Widget, WidgetId,
+    WidgetMut,
 };
+use xilem::masonry::kurbo::Axis;
+use xilem::masonry::layout::LenReq;
 use xilem::masonry::vello::Scene;
-use xilem::masonry::vello::kurbo::{Affine, Circle, Point, Size};
+use xilem::masonry::vello::kurbo::{Affine, Circle, Point, Size, Stroke};
 use xilem::masonry::vello::peniko::{Color, Fill};
 
-use smallvec::SmallVec;
 use tracing::trace_span;
 
 use crate::theme::DEFAULT_TINT;
@@ -54,6 +56,10 @@ impl PushButton {
         this.widget.lit_color = color;
         this.ctx.request_render();
     }
+
+    fn preferred_size() -> f64 {
+        BUTTON_RADIUS * 2.0 + 4.0
+    }
 }
 
 impl Widget for PushButton {
@@ -91,16 +97,27 @@ impl Widget for PushButton {
 
     fn register_children(&mut self, _ctx: &mut RegisterCtx<'_>) {}
 
-    fn update(&mut self, _ctx: &mut UpdateCtx<'_>, _props: &mut PropertiesMut<'_>, _event: &Update) {}
-
-    fn layout(
+    fn update(
         &mut self,
-        _ctx: &mut LayoutCtx<'_>,
+        _ctx: &mut UpdateCtx<'_>,
         _props: &mut PropertiesMut<'_>,
-        bc: &BoxConstraints,
-    ) -> Size {
-        let side = BUTTON_RADIUS * 2.0 + 4.0;
-        bc.constrain(Size::new(side, side))
+        _event: &Update,
+    ) {
+    }
+
+    fn measure(
+        &mut self,
+        _ctx: &mut MeasureCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        _axis: Axis,
+        _len_req: LenReq,
+        _cross_length: Option<f64>,
+    ) -> f64 {
+        Self::preferred_size()
+    }
+
+    fn layout(&mut self, ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, _size: Size) {
+        ctx.set_baseline_offset(0.);
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, scene: &mut Scene) {
@@ -113,7 +130,7 @@ impl Widget for PushButton {
         // Outer ring
         let ring_color = Color::from_rgb8(0x60, 0x60, 0x60);
         scene.stroke(
-            &xilem::masonry::vello::kurbo::Stroke::new(1.5),
+            &Stroke::new(1.5),
             Affine::IDENTITY,
             ring_color,
             None,
@@ -152,8 +169,8 @@ impl Widget for PushButton {
         });
     }
 
-    fn children_ids(&self) -> SmallVec<[WidgetId; 16]> {
-        SmallVec::new()
+    fn children_ids(&self) -> ChildrenIds {
+        ChildrenIds::default()
     }
 
     fn make_trace_span(&self, id: WidgetId) -> tracing::Span {

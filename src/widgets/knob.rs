@@ -9,15 +9,16 @@ use std::f64::consts::PI;
 
 use xilem::masonry::accesskit::{Node, Role};
 use xilem::masonry::core::{
-    AccessCtx, BoxConstraints, EventCtx, LayoutCtx, PaintCtx, PointerButtonEvent, PointerEvent,
-    PointerUpdate, PropertiesMut, PropertiesRef, RegisterCtx, Update, UpdateCtx, Widget, WidgetId,
-    WidgetMut,
+    AccessCtx, ChildrenIds, EventCtx, LayoutCtx, MeasureCtx, PaintCtx, PointerButtonEvent,
+    PointerEvent, PointerUpdate, PropertiesMut, PropertiesRef, RegisterCtx, Update, UpdateCtx,
+    Widget, WidgetId, WidgetMut,
 };
+use xilem::masonry::kurbo::Axis;
+use xilem::masonry::layout::LenReq;
 use xilem::masonry::vello::Scene;
 use xilem::masonry::vello::kurbo::{Affine, Arc, Cap, Circle, Line, Point, Size, Stroke, Vec2};
 use xilem::masonry::vello::peniko::{Color, Fill};
 
-use smallvec::SmallVec;
 use tracing::trace_span;
 
 use crate::theme::DEFAULT_TINT;
@@ -59,9 +60,18 @@ impl Knob {
         }
     }
 
-    pub fn with_step(mut self, step: f64) -> Self { self.step = step; self }
-    pub fn with_tint(mut self, color: Color) -> Self { self.tint = color; self }
-    pub fn with_small(mut self, small: bool) -> Self { self.small = small; self }
+    pub fn with_step(mut self, step: f64) -> Self {
+        self.step = step;
+        self
+    }
+    pub fn with_tint(mut self, color: Color) -> Self {
+        self.tint = color;
+        self
+    }
+    pub fn with_small(mut self, small: bool) -> Self {
+        self.small = small;
+        self
+    }
 
     pub fn set_value(this: &mut WidgetMut<'_, Self>, value: f64) {
         let v = value.clamp(this.widget.min, this.widget.max);
@@ -83,17 +93,39 @@ impl Knob {
         this.ctx.request_render();
     }
 
-    fn radius(&self) -> f64 { if self.small { KNOB_RADIUS_SMALL } else { KNOB_RADIUS } }
-    fn ring_w(&self) -> f64 { if self.small { RING_WIDTH_SMALL } else { RING_WIDTH } }
-    fn indicator_w(&self) -> f64 { if self.small { INDICATOR_WIDTH_SMALL } else { INDICATOR_WIDTH } }
+    fn radius(&self) -> f64 {
+        if self.small {
+            KNOB_RADIUS_SMALL
+        } else {
+            KNOB_RADIUS
+        }
+    }
+    fn ring_w(&self) -> f64 {
+        if self.small {
+            RING_WIDTH_SMALL
+        } else {
+            RING_WIDTH
+        }
+    }
+    fn indicator_w(&self) -> f64 {
+        if self.small {
+            INDICATOR_WIDTH_SMALL
+        } else {
+            INDICATOR_WIDTH
+        }
+    }
 
     fn normalized(&self) -> f64 {
-        if (self.max - self.min).abs() < f64::EPSILON { return 0.0; }
+        if (self.max - self.min).abs() < f64::EPSILON {
+            return 0.0;
+        }
         (self.value - self.min) / (self.max - self.min)
     }
 
     fn default_normalized(&self) -> f64 {
-        if (self.max - self.min).abs() < f64::EPSILON { return 0.0; }
+        if (self.max - self.min).abs() < f64::EPSILON {
+            return 0.0;
+        }
         (self.default - self.min) / (self.max - self.min)
     }
 
@@ -109,6 +141,10 @@ impl Knob {
     fn angle_for_normalized(n: f64) -> f64 {
         ARC_START + n * ARC_SWEEP
     }
+
+    fn preferred_size(&self) -> f64 {
+        self.radius() * 2.0 + 4.0
+    }
 }
 
 impl Widget for Knob {
@@ -120,7 +156,9 @@ impl Widget for Knob {
         _props: &mut PropertiesMut<'_>,
         event: &PointerEvent,
     ) {
-        if ctx.is_disabled() { return; }
+        if ctx.is_disabled() {
+            return;
+        }
         match event {
             PointerEvent::Down(PointerButtonEvent { state, .. }) => {
                 ctx.request_focus();
@@ -162,14 +200,31 @@ impl Widget for Knob {
         }
     }
 
-    fn accepts_pointer_interaction(&self) -> bool { true }
-    fn accepts_focus(&self) -> bool { true }
+    fn accepts_pointer_interaction(&self) -> bool {
+        true
+    }
+    fn accepts_focus(&self) -> bool {
+        true
+    }
     fn register_children(&mut self, _ctx: &mut RegisterCtx<'_>) {}
-    fn update(&mut self, _ctx: &mut UpdateCtx<'_>, _props: &mut PropertiesMut<'_>, _event: &Update) {}
+    fn update(&mut self, _ctx: &mut UpdateCtx<'_>, _props: &mut PropertiesMut<'_>, _event: &Update) {
+    }
 
-    fn layout(&mut self, _ctx: &mut LayoutCtx<'_>, _props: &mut PropertiesMut<'_>, bc: &BoxConstraints) -> Size {
-        let side = self.radius() * 2.0 + 4.0;
-        bc.constrain(Size::new(side, side))
+    fn measure(
+        &mut self,
+        _ctx: &mut MeasureCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        axis: Axis,
+        _len_req: LenReq,
+        _cross_length: Option<f64>,
+    ) -> f64 {
+        // Return preferred size for either axis (it's square)
+        let _ = axis;
+        self.preferred_size()
+    }
+
+    fn layout(&mut self, ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, _size: Size) {
+        ctx.set_baseline_offset(0.);
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, scene: &mut Scene) {
@@ -180,10 +235,19 @@ impl Widget for Knob {
         let ring_w = self.ring_w();
 
         // Track arc
-        let track_arc = Arc::new(Point::new(cx, cy), Vec2::new(r, r), ARC_START, ARC_SWEEP, 0.0);
+        let track_arc = Arc::new(
+            Point::new(cx, cy),
+            Vec2::new(r, r),
+            ARC_START,
+            ARC_SWEEP,
+            0.0,
+        );
         scene.stroke(
             &Stroke::new(ring_w).with_caps(Cap::Round),
-            Affine::IDENTITY, Color::from_rgb8(0x40, 0x40, 0x40), None, &track_arc,
+            Affine::IDENTITY,
+            Color::from_rgb8(0x40, 0x40, 0x40),
+            None,
+            &track_arc,
         );
 
         // Lit arc from default to current value
@@ -195,7 +259,10 @@ impl Widget for Knob {
             let lit_arc = Arc::new(Point::new(cx, cy), Vec2::new(r, r), start, end - start, 0.0);
             scene.stroke(
                 &Stroke::new(ring_w).with_caps(Cap::Round),
-                Affine::IDENTITY, self.tint, None, &lit_arc,
+                Affine::IDENTITY,
+                self.tint,
+                None,
+                &lit_arc,
             );
         }
 
@@ -210,7 +277,13 @@ impl Widget for Knob {
             Color::from_rgb8(0x50, 0x50, 0x50)
         };
         scene.fill(Fill::NonZero, Affine::IDENTITY, body_color, None, &body);
-        scene.stroke(&Stroke::new(1.0), Affine::IDENTITY, Color::from_rgb8(0x80, 0x80, 0x80), None, &body);
+        scene.stroke(
+            &Stroke::new(1.0),
+            Affine::IDENTITY,
+            Color::from_rgb8(0x80, 0x80, 0x80),
+            None,
+            &body,
+        );
 
         // Indicator line
         let angle = Self::angle_for_normalized(cur_n);
@@ -221,20 +294,32 @@ impl Widget for Knob {
         let p1 = Point::new(cx + dir.x * outer_r, cy + dir.y * outer_r);
         scene.stroke(
             &Stroke::new(self.indicator_w()).with_caps(Cap::Round),
-            Affine::IDENTITY, Color::WHITE, None, &Line::new(p0, p1),
+            Affine::IDENTITY,
+            Color::WHITE,
+            None,
+            &Line::new(p0, p1),
         );
     }
 
-    fn accessibility_role(&self) -> Role { Role::Slider }
+    fn accessibility_role(&self) -> Role {
+        Role::Slider
+    }
 
-    fn accessibility(&mut self, _ctx: &mut AccessCtx<'_>, _props: &PropertiesRef<'_>, node: &mut Node) {
+    fn accessibility(
+        &mut self,
+        _ctx: &mut AccessCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        node: &mut Node,
+    ) {
         node.set_numeric_value(self.value);
         node.set_min_numeric_value(self.min);
         node.set_max_numeric_value(self.max);
         node.set_numeric_value_step(if self.step > 0.0 { self.step } else { 0.01 });
     }
 
-    fn children_ids(&self) -> SmallVec<[WidgetId; 16]> { SmallVec::new() }
+    fn children_ids(&self) -> ChildrenIds {
+        ChildrenIds::default()
+    }
 
     fn make_trace_span(&self, id: WidgetId) -> tracing::Span {
         trace_span!("Knob", id = id.trace())

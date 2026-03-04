@@ -5,8 +5,7 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-use xilem::core::{MessageContext, Mut, View, ViewMarker};
-use xilem::core::MessageResult;
+use xilem::core::{Arg, MessageCtx, MessageResult, Mut, View, ViewArgument, ViewMarker};
 use xilem::{Pod, ViewCtx};
 
 use crate::widgets::scope::Scope as ScopeWidget;
@@ -17,25 +16,6 @@ pub use crate::widgets::scope::{ScopeBuffer, ScopeSource};
 ///
 /// Accepts a `ScopeSource` for lock-free polling of audio data
 /// via animation frames, independent of Xilem's rebuild cycle.
-///
-/// # Data pipeline
-///
-/// The scope bypasses Xilem's normal view rebuild cycle because audio
-/// data arrives continuously from the DSP thread at audio rate:
-///
-/// 1. **DSP thread** writes sample buffers into a `triple_buffer::Input`.
-/// 2. A [`ScopeSource`] wraps the corresponding `triple_buffer::Output`
-///    behind an `Arc<Mutex<..>>` so it can be cheaply cloned and shared.
-/// 3. Pass the source to this view: `scope(Some(dsp.scope_source()))`.
-/// 4. On first render the widget calls `request_anim_frame()`. On every
-///    animation frame (~60 fps) it polls the `ScopeSource` for new data,
-///    ingests it (trigger detection + decimation), and requests a repaint.
-/// 5. When the `ScopeSource` is replaced (e.g. audio device change), the
-///    view detects the new source ID during rebuild and hands it to the
-///    widget, which restarts the animation loop.
-///
-/// This means the scope updates at display refresh rate without forcing
-/// Xilem to rebuild the entire view tree on every audio buffer.
 pub struct Scope {
     source: Option<ScopeSource>,
     wave_color: Option<xilem::masonry::vello::peniko::Color>,
@@ -46,11 +26,6 @@ pub struct Scope {
 /// Pass a [`ScopeSource`] obtained from your DSP handle to enable
 /// continuous waveform display. The widget polls the source at ~60 fps
 /// via animation frames — no manual buffer forwarding needed.
-///
-/// ```ignore
-/// // In your app_logic:
-/// scope(Some(state.dsp.scope_source()))
-/// ```
 pub fn scope(source: Option<ScopeSource>) -> Scope {
     Scope {
         source,
@@ -69,14 +44,18 @@ impl ViewMarker for Scope {}
 
 impl<State, Action> View<State, Action, ViewCtx> for Scope
 where
-    State: 'static,
+    State: ViewArgument,
     Action: 'static,
 {
     type Element = Pod<ScopeWidget>;
     /// Tracks the source ID to detect replacement.
     type ViewState = u64;
 
-    fn build(&self, ctx: &mut ViewCtx, _: &mut State) -> (Self::Element, Self::ViewState) {
+    fn build(
+        &self,
+        ctx: &mut ViewCtx,
+        _: Arg<'_, State>,
+    ) -> (Self::Element, Self::ViewState) {
         let mut w = ScopeWidget::new();
         if let Some(c) = self.wave_color {
             w = w.with_wave_color(c);
@@ -97,7 +76,7 @@ where
         view_state: &mut Self::ViewState,
         _: &mut ViewCtx,
         mut element: Mut<'_, Self::Element>,
-        _: &mut State,
+        _: Arg<'_, State>,
     ) {
         let source_id = self.source.as_ref().map_or(0, |s| s.id());
         if source_id != *view_state {
@@ -108,16 +87,21 @@ where
         }
     }
 
-    fn teardown(&self, _: &mut Self::ViewState, ctx: &mut ViewCtx, element: Mut<'_, Self::Element>) {
-        ctx.teardown_leaf(element);
+    fn teardown(
+        &self,
+        _: &mut Self::ViewState,
+        ctx: &mut ViewCtx,
+        element: Mut<'_, Self::Element>,
+    ) {
+        ctx.teardown_action_source(element);
     }
 
     fn message(
         &self,
         _: &mut Self::ViewState,
-        _message: &mut MessageContext,
+        _message: &mut MessageCtx,
         _: Mut<'_, Self::Element>,
-        _: &mut State,
+        _: Arg<'_, State>,
     ) -> MessageResult<Action> {
         MessageResult::Stale
     }

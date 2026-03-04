@@ -7,16 +7,17 @@
 
 use xilem::masonry::accesskit::{Node, Role};
 use xilem::masonry::core::{
-    AccessCtx, BoxConstraints, BrushIndex, EventCtx, LayoutCtx, NewWidget, PaintCtx, PointerEvent,
-    PropertiesMut, PropertiesRef, RegisterCtx, StyleProperty, Update, UpdateCtx, Widget, WidgetId,
-    WidgetMut, WidgetPod, render_text,
+    AccessCtx, BrushIndex, ChildrenIds, EventCtx, LayoutCtx, MeasureCtx, NewWidget, PaintCtx,
+    PointerEvent, PropertiesMut, PropertiesRef, RegisterCtx, StyleProperty, Update, UpdateCtx,
+    Widget, WidgetId, WidgetMut, WidgetPod, render_text,
 };
+use xilem::masonry::kurbo::Axis;
+use xilem::masonry::layout::LenReq;
 use xilem::masonry::vello::Scene;
 use xilem::masonry::vello::kurbo::{Affine, Point, Rect, RoundedRect, Size, Stroke, Vec2};
 use xilem::masonry::vello::peniko::{Color, Fill};
 
 use xilem::masonry::parley::Layout;
-use smallvec::SmallVec;
 use tracing::trace_span;
 
 const LABEL_HEIGHT: f64 = 16.0;
@@ -39,7 +40,11 @@ fn hsl_to_rgb(h: f64, s: f64, l: f64) -> (f64, f64, f64) {
     if s == 0.0 {
         return (l, l, l);
     }
-    let q = if l < 0.5 { l * (1.0 + s) } else { l + s - l * s };
+    let q = if l < 0.5 {
+        l * (1.0 + s)
+    } else {
+        l + s - l * s
+    };
     let p = 2.0 * l - q;
     let hue_to_rgb = |t: f64| {
         let t = ((t % 1.0) + 1.0) % 1.0;
@@ -53,13 +58,15 @@ fn hsl_to_rgb(h: f64, s: f64, l: f64) -> (f64, f64, f64) {
             p
         }
     };
-    (hue_to_rgb(h + 1.0 / 3.0), hue_to_rgb(h), hue_to_rgb(h - 1.0 / 3.0))
+    (
+        hue_to_rgb(h + 1.0 / 3.0),
+        hue_to_rgb(h),
+        hue_to_rgb(h - 1.0 / 3.0),
+    )
 }
 
 /// sRGB to perceptual luminance (Y) using APCA linearization.
 /// Based on the APCA-W3 algorithm by Andrew Somers (Myndex).
-/// https://www.researchgate.net/lab/Myndex-Research-Andrew-Somers
-/// https://github.com/Myndex
 fn srgb_to_y(r: u8, g: u8, b: u8) -> f64 {
     const MAIN_TRC: f64 = 2.4;
     const SR_CO: f64 = 0.2126729;
@@ -70,10 +77,6 @@ fn srgb_to_y(r: u8, g: u8, b: u8) -> f64 {
 }
 
 /// APCA perceptual contrast (Lc value) between text and background.
-/// Negative Lc = light text on dark bg. Positive = dark text on light bg.
-/// Based on APCA-W3 by Andrew Somers (Myndex), W3C WCAG 3.0 draft.
-/// https://www.researchgate.net/lab/Myndex-Research-Andrew-Somers
-/// https://github.com/Myndex
 fn apca_contrast(txt_y: f64, bg_y: f64) -> f64 {
     const BLK_THRS: f64 = 0.022;
     const BLK_CLMP: f64 = 1.414;
@@ -88,25 +91,39 @@ fn apca_contrast(txt_y: f64, bg_y: f64) -> f64 {
     const DELTA_Y_MIN: f64 = 0.0005;
     const LO_CLIP: f64 = 0.1;
 
-    let ty = if txt_y > BLK_THRS { txt_y } else { txt_y + (BLK_THRS - txt_y).powf(BLK_CLMP) };
-    let by = if bg_y > BLK_THRS { bg_y } else { bg_y + (BLK_THRS - bg_y).powf(BLK_CLMP) };
+    let ty = if txt_y > BLK_THRS {
+        txt_y
+    } else {
+        txt_y + (BLK_THRS - txt_y).powf(BLK_CLMP)
+    };
+    let by = if bg_y > BLK_THRS {
+        bg_y
+    } else {
+        bg_y + (BLK_THRS - bg_y).powf(BLK_CLMP)
+    };
 
-    if (by - ty).abs() < DELTA_Y_MIN { return 0.0; }
+    if (by - ty).abs() < DELTA_Y_MIN {
+        return 0.0;
+    }
 
     if by > ty {
         let sapc = (by.powf(NORM_BG) - ty.powf(NORM_TXT)) * SCALE_BOW;
-        if sapc < LO_CLIP { 0.0 } else { (sapc - LO_BOW_OFFSET) * 100.0 }
+        if sapc < LO_CLIP {
+            0.0
+        } else {
+            (sapc - LO_BOW_OFFSET) * 100.0
+        }
     } else {
         let sapc = (by.powf(REV_BG) - ty.powf(REV_TXT)) * SCALE_WOB;
-        if sapc > -LO_CLIP { 0.0 } else { (sapc + LO_WOB_OFFSET) * 100.0 }
+        if sapc > -LO_CLIP {
+            0.0
+        } else {
+            (sapc + LO_WOB_OFFSET) * 100.0
+        }
     }
 }
 
 /// Compute an inverse contrast color for text on the given background.
-///
-/// Uses HSL hue rotation with contrast-aware lightness and saturation
-/// adjustment. The result is then verified against the APCA perceptual
-/// contrast model and lightness is boosted if needed.
 fn inverse_contrast_color(bg: Color) -> Color {
     let (r8, g8, b8) = color_rgb(bg);
     let r = r8 as f64 / 255.0;
@@ -147,14 +164,14 @@ fn inverse_contrast_color(bg: Color) -> Color {
     let mut l2 = (l * (1.0 - contrast)) / (contrast + 1.0);
     if l < 0.382 && (l - l2).abs() < 0.382 {
         l2 = 1.0 - l2;
-        if l2 < 0.5 { l2 = 0.5; }
+        if l2 < 0.5 {
+            l2 = 0.5;
+        }
     }
-    // Cap lightness — rich but not washed out
+    // Cap lightness
     l2 = l2.min(0.55);
 
-    // Adjust saturation for inverse text.
-    // For colorful backgrounds (s > 0.15), produce vivid inverse text.
-    // For near-neutral backgrounds, keep text neutral.
+    // Adjust saturation
     if s > 0.5 {
         s = 1.0 - (s * (1.0 - 0.141592653589));
         s *= 0.9;
@@ -169,14 +186,12 @@ fn inverse_contrast_color(bg: Color) -> Color {
     let to_u8 = |v: f64| (v * 255.0).round().clamp(0.0, 255.0) as u8;
     let (cr, cg, cb) = (to_u8(ro), to_u8(go), to_u8(bo));
 
-    // Verify APCA contrast; boost lightness if below threshold
+    // Verify APCA contrast
     let bg_y = srgb_to_y(r8, g8, b8);
     let txt_y = srgb_to_y(cr, cg, cb);
     let lc = apca_contrast(txt_y, bg_y);
 
-    // Target |Lc| >= 60 for readable small text
     if lc.abs() < 60.0 {
-        // Increase lightness until contrast is sufficient
         let mut adj_l = l2;
         for _ in 0..20 {
             adj_l = (adj_l + 0.05).min(1.0);
@@ -187,7 +202,6 @@ fn inverse_contrast_color(bg: Color) -> Color {
                 return Color::from_rgb8(tr, tg, tb);
             }
         }
-        // Fallback: bright white or dark black
         let white_lc = apca_contrast(srgb_to_y(255, 255, 255), bg_y);
         if white_lc.abs() > lc.abs() {
             return Color::from_rgb8(0xEE, 0xEE, 0xEE);
@@ -199,7 +213,7 @@ fn inverse_contrast_color(bg: Color) -> Color {
     Color::from_rgb8(cr, cg, cb)
 }
 
-/// Derive border color from a tint (lighter, semi-transparent).
+/// Derive border color from a tint.
 fn border_from_tint(r: u8, g: u8, b: u8) -> Color {
     Color::from_rgba8(
         (r as u16 + (255 - r as u16) * 40 / 100) as u8,
@@ -288,19 +302,34 @@ impl Widget for GroupBox {
     type Action = ();
 
     fn on_pointer_event(
-        &mut self, _ctx: &mut EventCtx<'_>, _props: &mut PropertiesMut<'_>, _event: &PointerEvent,
-    ) {}
+        &mut self,
+        _ctx: &mut EventCtx<'_>,
+        _props: &mut PropertiesMut<'_>,
+        _event: &PointerEvent,
+    ) {
+    }
 
     fn register_children(&mut self, ctx: &mut RegisterCtx<'_>) {
         ctx.register_child(&mut self.child);
     }
 
-    fn update(&mut self, _ctx: &mut UpdateCtx<'_>, _props: &mut PropertiesMut<'_>, _event: &Update) {}
+    fn update(
+        &mut self,
+        _ctx: &mut UpdateCtx<'_>,
+        _props: &mut PropertiesMut<'_>,
+        _event: &Update,
+    ) {
+    }
 
-    fn layout(
-        &mut self, ctx: &mut LayoutCtx<'_>, _props: &mut PropertiesMut<'_>, bc: &BoxConstraints,
-    ) -> Size {
-        // Build label text layout
+    fn measure(
+        &mut self,
+        ctx: &mut MeasureCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        axis: Axis,
+        len_req: LenReq,
+        cross_length: Option<f64>,
+    ) -> f64 {
+        // Build label text layout if needed
         if self.needs_layout || ctx.fonts_changed() {
             let (font_ctx, layout_ctx) = ctx.text_contexts();
             let mut builder = layout_ctx.ranged_builder(font_ctx, &self.label, 1.0, true);
@@ -311,23 +340,47 @@ impl Widget for GroupBox {
             self.needs_layout = false;
         }
 
-        let min_child_w = (bc.min().width - PADDING * 2.0).max(0.0);
-        let min_child_h = (bc.min().height - LABEL_HEIGHT - PADDING * 2.0).max(0.0);
-        let max_child_w = (bc.max().width - PADDING * 2.0).max(0.0);
-        let max_child_h = (bc.max().height - LABEL_HEIGHT - PADDING * 2.0).max(0.0);
-        let child_bc = BoxConstraints::new(
-            Size::new(min_child_w, min_child_h),
-            Size::new(max_child_w, max_child_h),
+        // Account for padding and label height
+        let extra = match axis {
+            Axis::Horizontal => PADDING * 2.0,
+            Axis::Vertical => LABEL_HEIGHT + PADDING * 2.0,
+        };
+
+        // Reduce length request for child
+        let child_len_req = len_req.reduce(extra);
+
+        // Adjust cross_length for child
+        let child_cross = cross_length.map(|c| {
+            let cross_extra = match axis {
+                Axis::Horizontal => LABEL_HEIGHT + PADDING * 2.0,
+                Axis::Vertical => PADDING * 2.0,
+            };
+            (c - cross_extra).max(0.0)
+        });
+
+        let child_length = ctx.compute_length(&mut self.child, child_len_req.into(), Default::default(), axis, child_cross);
+        child_length + extra
+    }
+
+    fn layout(&mut self, ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, size: Size) {
+        // Build label text layout if needed
+        if self.needs_layout || ctx.fonts_changed() {
+            let (font_ctx, layout_ctx) = ctx.text_contexts();
+            let mut builder = layout_ctx.ranged_builder(font_ctx, &self.label, 1.0, true);
+            builder.push_default(StyleProperty::FontSize(LABEL_FONT_SIZE));
+            builder.push_default(StyleProperty::Brush(BrushIndex(0)));
+            builder.build_into(&mut self.text_layout, &self.label);
+            self.text_layout.break_all_lines(None);
+            self.needs_layout = false;
+        }
+
+        let child_size = Size::new(
+            (size.width - PADDING * 2.0).max(0.0),
+            (size.height - LABEL_HEIGHT - PADDING * 2.0).max(0.0),
         );
-        let child_size = ctx.run_layout(&mut self.child, &child_bc);
+        ctx.run_layout(&mut self.child, child_size);
         ctx.place_child(&mut self.child, Point::new(PADDING, LABEL_HEIGHT + PADDING));
-
-        let content_w = child_size.width.max(min_child_w) + PADDING * 2.0;
-        let content_h = child_size.height.max(min_child_h) + LABEL_HEIGHT + PADDING * 2.0;
-
-        // When fill is set, expand width to the maximum available space.
-        let w = if self.fill && bc.max().width.is_finite() { bc.max().width } else { content_w };
-        bc.constrain(Size::new(w, content_h))
+        ctx.set_baseline_offset(0.);
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, scene: &mut Scene) {
@@ -339,9 +392,15 @@ impl Widget for GroupBox {
         scene.fill(Fill::NonZero, Affine::IDENTITY, self.bg_color, None, &rr);
 
         // Subtle border
-        scene.stroke(&Stroke::new(BORDER_WIDTH), Affine::IDENTITY, self.border_color, None, &rr);
+        scene.stroke(
+            &Stroke::new(BORDER_WIDTH),
+            Affine::IDENTITY,
+            self.border_color,
+            None,
+            &rr,
+        );
 
-        // Label text using inverse contrast color (always readable).
+        // Label text using inverse contrast color
         let label_color = inverse_contrast_color(self.bg_color);
         let text_h = self.text_layout.height() as f64;
         let text_y = (LABEL_HEIGHT - text_h) / 2.0;
@@ -354,16 +413,21 @@ impl Widget for GroupBox {
         );
     }
 
-    fn accessibility_role(&self) -> Role { Role::Group }
+    fn accessibility_role(&self) -> Role {
+        Role::Group
+    }
 
     fn accessibility(
-        &mut self, _ctx: &mut AccessCtx<'_>, _props: &PropertiesRef<'_>, node: &mut Node,
+        &mut self,
+        _ctx: &mut AccessCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        node: &mut Node,
     ) {
         node.set_label(self.label.clone());
     }
 
-    fn children_ids(&self) -> SmallVec<[WidgetId; 16]> {
-        SmallVec::from_slice(&[self.child.id()])
+    fn children_ids(&self) -> ChildrenIds {
+        ChildrenIds::from_slice(&[self.child.id()])
     }
 
     fn make_trace_span(&self, id: WidgetId) -> tracing::Span {

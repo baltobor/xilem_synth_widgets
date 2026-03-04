@@ -5,8 +5,9 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-use xilem::core::{MessageContext, Mut, View, ViewMarker, ViewId, ViewPathTracker};
-use xilem::core::MessageResult;
+use xilem::core::{
+    Arg, MessageCtx, MessageResult, Mut, View, ViewArgument, ViewId, ViewMarker, ViewPathTracker,
+};
 use xilem::{Pod, ViewCtx, WidgetView};
 
 use crate::widgets::group_box::GroupBox as GroupBoxWidget;
@@ -23,7 +24,7 @@ pub struct GroupBox<V> {
 }
 
 /// Create a group box with a label and child content.
-pub fn group_box<State, Action, V: WidgetView<State, Action>>(
+pub fn group_box<State: ViewArgument, Action, V: WidgetView<State, Action>>(
     label: impl Into<String>,
     child: V,
 ) -> GroupBox<V> {
@@ -58,7 +59,7 @@ impl<V> ViewMarker for GroupBox<V> {}
 impl<V, State, Action> View<State, Action, ViewCtx> for GroupBox<V>
 where
     V: WidgetView<State, Action>,
-    State: 'static,
+    State: ViewArgument,
     Action: 'static,
 {
     type Element = Pod<GroupBoxWidget>;
@@ -67,15 +68,21 @@ where
     fn build(
         &self,
         ctx: &mut ViewCtx,
-        app_state: &mut State,
+        app_state: Arg<'_, State>,
     ) -> (Self::Element, Self::ViewState) {
         let (child_pod, child_state) = ctx.with_id(CHILD_VIEW_ID, |ctx| {
             self.child.build(ctx, app_state)
         });
         let mut w = GroupBoxWidget::new(&self.label, child_pod.new_widget);
-        if let Some(c) = self.bg_color { w = w.with_bg_color(c); }
-        if let Some(c) = self.tint { w = w.with_tint(c); }
-        if self.fill { w = w.with_fill(true); }
+        if let Some(c) = self.bg_color {
+            w = w.with_bg_color(c);
+        }
+        if let Some(c) = self.tint {
+            w = w.with_tint(c);
+        }
+        if self.fill {
+            w = w.with_fill(true);
+        }
         let pod = ctx.with_action_widget(|ctx| ctx.create_pod(w));
         (pod, child_state)
     }
@@ -86,16 +93,20 @@ where
         view_state: &mut Self::ViewState,
         ctx: &mut ViewCtx,
         mut element: Mut<'_, Self::Element>,
-        app_state: &mut State,
+        app_state: Arg<'_, State>,
     ) {
         if prev.label != self.label {
             GroupBoxWidget::set_label(&mut element, &self.label);
         }
         if prev.bg_color != self.bg_color {
-            if let Some(c) = self.bg_color { GroupBoxWidget::set_bg_color(&mut element, c); }
+            if let Some(c) = self.bg_color {
+                GroupBoxWidget::set_bg_color(&mut element, c);
+            }
         }
         if prev.tint != self.tint {
-            if let Some(c) = self.tint { GroupBoxWidget::set_tint(&mut element, c); }
+            if let Some(c) = self.tint {
+                GroupBoxWidget::set_tint(&mut element, c);
+            }
         }
         if prev.fill != self.fill {
             GroupBoxWidget::set_fill(&mut element, self.fill);
@@ -124,15 +135,15 @@ where
                 GroupBoxWidget::child_mut(&mut element).downcast(),
             );
         });
-        ctx.teardown_leaf(element);
+        ctx.teardown_action_source(element);
     }
 
     fn message(
         &self,
         view_state: &mut Self::ViewState,
-        message: &mut MessageContext,
+        message: &mut MessageCtx,
         mut element: Mut<'_, Self::Element>,
-        app_state: &mut State,
+        app_state: Arg<'_, State>,
     ) -> MessageResult<Action> {
         match message.take_first() {
             Some(CHILD_VIEW_ID) => self.child.message(

@@ -9,16 +9,17 @@ use std::sync::{Arc, Mutex};
 
 use xilem::masonry::accesskit::{Node, Role};
 use xilem::masonry::core::{
-    AccessCtx, BoxConstraints, EventCtx, LayoutCtx, PaintCtx, PointerEvent, PropertiesMut,
-    PropertiesRef, RegisterCtx, Update, UpdateCtx, Widget, WidgetId, WidgetMut,
+    AccessCtx, ChildrenIds, EventCtx, LayoutCtx, MeasureCtx, PaintCtx, PointerEvent,
+    PropertiesMut, PropertiesRef, RegisterCtx, Update, UpdateCtx, Widget, WidgetId, WidgetMut,
 };
+use xilem::masonry::kurbo::Axis;
+use xilem::masonry::layout::LenReq;
 use xilem::masonry::vello::Scene;
 use xilem::masonry::vello::kurbo::{
     Affine, BezPath, Cap, Line, Point, Rect, RoundedRect, Size, Stroke,
 };
 use xilem::masonry::vello::peniko::{Color, Fill};
 
-use smallvec::SmallVec;
 use tracing::trace_span;
 
 const SCOPE_WIDTH: f64 = 192.0;
@@ -27,10 +28,6 @@ const BORDER_RADIUS: f64 = 4.0;
 const PADDING: f64 = 2.0;
 
 /// Thread-safe buffer for passing audio samples to the scope.
-///
-/// Wrap your sample data in `Arc<Vec<f32>>` and send it from any thread.
-/// The scope will decimate the data for display and only keep the
-/// last buffer for rendering efficiency.
 #[derive(Clone)]
 pub struct ScopeBuffer {
     pub samples: Arc<Vec<f32>>,
@@ -49,23 +46,14 @@ impl ScopeBuffer {
 }
 
 /// Shared scope data source for lock-free polling from the widget.
-///
-/// Wraps a `triple_buffer::Output<Vec<f32>>` so the Scope widget can
-/// poll for new audio data during animation frames without going
-/// through Xilem's view rebuild cycle.
-///
-/// Create one from the triple-buffer output that pairs with your DSP
-/// thread's input. Each `ScopeSource` gets a unique ID so the view
-/// layer can detect when the source is replaced (e.g. on audio device
-/// change). Cloning shares the same underlying buffer and ID.
 #[derive(Clone)]
 pub struct ScopeSource {
     inner: Arc<Mutex<triple_buffer::Output<Vec<f32>>>>,
-    /// Unique ID for detecting source replacement.
     id: u64,
 }
 
-static SCOPE_SOURCE_NEXT_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+static SCOPE_SOURCE_NEXT_ID: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(1);
 
 impl ScopeSource {
     pub fn new(output: triple_buffer::Output<Vec<f32>>) -> Self {
@@ -103,42 +91,16 @@ pub enum TriggerMode {
 }
 
 /// An oscilloscope widget that displays audio waveforms.
-///
-/// The zero-crossing trigger point is centered in the display: the left
-/// half shows the waveform before the crossing, the right half shows
-/// after. Changing frequency expands the waveform symmetrically from
-/// the center. The trigger search starts at `display_width / 2` into
-/// the raw buffer to ensure enough pre-trigger data for the left side.
-///
-/// Updates independently of Xilem's rebuild cycle by polling a shared
-/// `ScopeSource` (triple-buffer output) during `on_anim_frame`.
-///
-/// Features:
-/// - Centered zero-crossing trigger with hysteresis for stable display
-/// - Accepts `ScopeSource` for lock-free polling from real-time DSP threads
-/// - Decimates data for display (CPU friendly)
-/// - ~60fps rendering via animation frames
-/// - Fixed 192x196 pixel display area
 pub struct Scope {
-    /// The display buffer (decimated for rendering)
     display_points: Vec<f32>,
-    /// Raw buffer for trigger detection
     raw_buffer: Vec<f32>,
-    /// Number of display points to show
     display_width: usize,
-    /// Trigger mode
     trigger_mode: TriggerMode,
-    /// Hysteresis threshold for zero-crossing (prevents jitter)
     trigger_threshold: f32,
-    /// Waveform color
     wave_color: Color,
-    /// Background color
     bg_color: Color,
-    /// Grid color
     grid_color: Color,
-    /// Generation counter to detect new data
     generation: u64,
-    /// Optional shared source for polling new data during anim frames
     source: Option<ScopeSource>,
 }
 
@@ -179,22 +141,19 @@ impl Scope {
         self
     }
 
-    /// Push a new buffer of samples. The scope will find a zero-crossing
-    /// trigger point and decimate the data for display.
+    /// Push a new buffer of samples.
     pub fn push_buffer(this: &mut WidgetMut<'_, Self>, buffer: &ScopeBuffer) {
         if this.widget.ingest_buffer(buffer) {
             this.ctx.request_render();
         }
     }
 
-    /// Internal: ingest a buffer and return true if display was updated.
     fn ingest_buffer(&mut self, buffer: &ScopeBuffer) -> bool {
         let samples = &buffer.samples;
         if samples.is_empty() {
             return false;
         }
 
-        // Append to raw buffer, keep a reasonable amount for trigger search
         let max_raw = self.display_width * 4;
         self.raw_buffer.extend_from_slice(samples);
         if self.raw_buffer.len() > max_raw {
@@ -202,25 +161,21 @@ impl Scope {
             self.raw_buffer.drain(..drain);
         }
 
-        // Find trigger point (zero-crossing with hysteresis)
         let trigger_pos = self.find_trigger_point();
 
-        // Center the trigger point in the display: show half before, half after.
         let half = self.display_width / 2;
         let display_start = trigger_pos.saturating_sub(half);
         let display_end = (trigger_pos + half).min(self.raw_buffer.len());
         let span = display_end - display_start;
 
-        // Copy exactly the centered span into display buffer (1:1 or decimated)
         if span >= self.display_width {
-            // Decimate: map display_width points from the span
             let step = span as f64 / self.display_width as f64;
             for i in 0..self.display_width {
                 let src_idx = display_start + (i as f64 * step) as usize;
-                self.display_points[i] = self.raw_buffer[src_idx.min(self.raw_buffer.len() - 1)];
+                self.display_points[i] =
+                    self.raw_buffer[src_idx.min(self.raw_buffer.len() - 1)];
             }
         } else {
-            // Not enough data: center what we have
             let offset = (self.display_width - span) / 2;
             for i in 0..self.display_width {
                 if i >= offset && i < offset + span {
@@ -235,16 +190,10 @@ impl Scope {
         true
     }
 
-    /// Find a stable zero-crossing trigger point using hysteresis.
-    ///
-    /// Looks for a region where samples go from below -threshold
-    /// to above +threshold (rising edge) or vice versa.
     fn find_trigger_point(&self) -> usize {
         let threshold = self.trigger_threshold;
         let samples = &self.raw_buffer;
         let half = self.display_width / 2;
-        // Start searching from half-display into the buffer so there's
-        // enough data before the trigger for the left side of the display.
         let search_start = half;
         let search_end = samples.len().saturating_sub(half);
 
@@ -277,7 +226,6 @@ impl Scope {
             }
         }
 
-        // Fallback: center of available data
         half.min(samples.len().saturating_sub(1))
     }
 }
@@ -296,7 +244,10 @@ impl Widget for Scope {
     fn register_children(&mut self, _ctx: &mut RegisterCtx<'_>) {}
 
     fn on_anim_frame(
-        &mut self, ctx: &mut UpdateCtx<'_>, _props: &mut PropertiesMut<'_>, _interval: u64,
+        &mut self,
+        ctx: &mut UpdateCtx<'_>,
+        _props: &mut PropertiesMut<'_>,
+        _interval: u64,
     ) {
         if let Some(ref source) = self.source {
             if let Some(buf) = source.poll() {
@@ -308,19 +259,33 @@ impl Widget for Scope {
         }
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx<'_>, _props: &mut PropertiesMut<'_>, event: &Update) {
+    fn update(
+        &mut self,
+        ctx: &mut UpdateCtx<'_>,
+        _props: &mut PropertiesMut<'_>,
+        event: &Update,
+    ) {
         if matches!(event, Update::WidgetAdded) && self.source.is_some() {
             ctx.request_anim_frame();
         }
     }
 
-    fn layout(
+    fn measure(
         &mut self,
-        _ctx: &mut LayoutCtx<'_>,
-        _props: &mut PropertiesMut<'_>,
-        bc: &BoxConstraints,
-    ) -> Size {
-        bc.constrain(Size::new(SCOPE_WIDTH, SCOPE_HEIGHT))
+        _ctx: &mut MeasureCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        axis: Axis,
+        _len_req: LenReq,
+        _cross_length: Option<f64>,
+    ) -> f64 {
+        match axis {
+            Axis::Horizontal => SCOPE_WIDTH,
+            Axis::Vertical => SCOPE_HEIGHT,
+        }
+    }
+
+    fn layout(&mut self, ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, _size: Size) {
+        ctx.set_baseline_offset(0.);
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, scene: &mut Scene) {
@@ -386,7 +351,6 @@ impl Widget for Scope {
 
             for (i, &sample) in self.display_points.iter().enumerate() {
                 let x = draw_x + i as f64 * step;
-                // Clamp sample to -1..1 range for display
                 let clamped = sample.clamp(-1.0, 1.0) as f64;
                 let y = mid_y - clamped * (draw_h / 2.0 - 2.0);
 
@@ -429,8 +393,8 @@ impl Widget for Scope {
         node.set_description("Oscilloscope display".to_string());
     }
 
-    fn children_ids(&self) -> SmallVec<[WidgetId; 16]> {
-        SmallVec::new()
+    fn children_ids(&self) -> ChildrenIds {
+        ChildrenIds::default()
     }
 
     fn make_trace_span(&self, id: WidgetId) -> tracing::Span {

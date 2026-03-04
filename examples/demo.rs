@@ -7,10 +7,12 @@
 
 use std::sync::Arc;
 
-use xilem::masonry::properties::types::{AsUnit, CrossAxisAlignment};
+use xilem::masonry::layout::AsUnit;
+use xilem::masonry::properties::types::CrossAxisAlignment;
 use xilem::masonry::vello::peniko::Color;
 use xilem::style::Style;
 use xilem::view::{flex_col, flex_row, label, FlexExt as _, FlexSpacer};
+use xilem::core::Edit;
 use xilem::{EventLoop, WidgetView, WindowOptions, Xilem};
 
 mod dsp;
@@ -61,7 +63,7 @@ impl DemoState {
     }
 }
 
-fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
+fn app_logic(state: &mut DemoState) -> impl WidgetView<Edit<DemoState>> + use<> {
     let db_text = if state.volume_db <= -60.0 {
         "-inf dB".to_string()
     } else {
@@ -76,15 +78,15 @@ fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
 
     // Create the Xilem GUI!
     // Thanks to Olivier Faure for picking me up on github.
-    group_box(
+    group_box::<Edit<DemoState>, (), _>(
         "Synth Widget Demo",
-        flex_col((
+        flex_col::<Edit<DemoState>, (), _>((
             // Top bar - audio device selection
-            group_box(
+            group_box::<Edit<DemoState>, (), _>(
                 "Audio",
-                flex_col((
-                    flex_row((
-                        param_selector(
+                flex_col::<Edit<DemoState>, (), _>((
+                    flex_row::<Edit<DemoState>, (), _>((
+                        param_selector::<Edit<DemoState>, ()>(
                             device_names,
                             state.selected_device,
                             |s: &mut DemoState, idx| {
@@ -104,7 +106,7 @@ fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
                             },
                         )
                         .label_align(LabelAlign::Right),
-                        push_button(state.audio_started, |s: &mut DemoState, v| {
+                        push_button::<Edit<DemoState>, ()>(state.audio_started, |s: &mut DemoState, v| {
                             if v {
                                 let device_name =
                                     s.devices.get(s.selected_device).map(|n| n.as_str());
@@ -126,8 +128,8 @@ fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
                         label("Start").text_size(10.0).color(DIM_TEXT),
                         FlexSpacer::Flex(1.0),
                     ))
-                    .gap(6.0.px()),
-                    FlexSpacer::Fixed(4.0.px()),
+                    .gap(6.0_f64.px()),
+                    FlexSpacer::Fixed(4.0_f64.px()),
                     label("Developed in Rust. Based on linebender's Xilem UI.")
                         .text_size(9.0)
                         .color(DIM_TEXT),
@@ -136,16 +138,16 @@ fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
                         .color(DIM_TEXT),
                 ))
                 .cross_axis_alignment(CrossAxisAlignment::Start)
-                .gap(2.0.px()),
+                .gap(2.0_f64.px()),
             ),
             // Main controls row
-            flex_row((
+            flex_row::<Edit<DemoState>, (), _>((
                 // Oscillators group
-                group_box(
+                group_box::<Edit<DemoState>, (), _>(
                     "Oscillators",
-                    flex_col((
-                        flex_row((
-                            param_selector(
+                    flex_col::<Edit<DemoState>, (), _>((
+                        flex_row::<Edit<DemoState>, (), _>((
+                            param_selector::<Edit<DemoState>, ()>(
                                 vec![
                                     "Sine".into(),
                                     "Saw".into(),
@@ -159,11 +161,11 @@ fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
                                 },
                             )
                             .label_align(LabelAlign::Left),
-                            flex_col((
+                            flex_col::<Edit<DemoState>, (), _>((
                                 label(format!("{:.0} Hz", state.freq1))
                                     .text_size(11.0)
                                     .color(TEXT_COLOR),
-                                knob(
+                                knob::<Edit<DemoState>, ()>(
                                     20.0,
                                     2000.0,
                                     state.freq1,
@@ -176,12 +178,12 @@ fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
                                 .step(1.0),
                                 label("Freq 1").text_size(10.0).color(DIM_TEXT),
                             ))
-                            .gap(1.0.px()),
-                            flex_col((
+                            .gap(1.0_f64.px()),
+                            flex_col::<Edit<DemoState>, (), _>((
                                 label(format!("{:.0} Hz", state.freq2))
                                     .text_size(11.0)
                                     .color(TEXT_COLOR),
-                                knob(
+                                knob::<Edit<DemoState>, ()>(
                                     20.0,
                                     2000.0,
                                     state.freq2,
@@ -194,15 +196,15 @@ fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
                                 .step(1.0),
                                 label("Freq 2").text_size(10.0).color(DIM_TEXT),
                             ))
-                            .gap(1.0.px()),
+                            .gap(1.0_f64.px()),
                         ))
-                        .gap(6.0.px()),
-                        flex_row((
-                            flex_col((
+                        .gap(6.0_f64.px()),
+                        flex_row::<Edit<DemoState>, (), _>((
+                            flex_col::<Edit<DemoState>, (), _>((
                                 label(format!("{:.0} Hz", state.lfo_range))
                                     .text_size(9.0)
                                     .color(TEXT_COLOR),
-                                knob(
+                                knob::<Edit<DemoState>, ()>(
                                     2.0,
                                     20.0,
                                     state.lfo_range,
@@ -216,12 +218,12 @@ fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
                                 .small(),
                                 label("Range").text_size(9.0).color(DIM_TEXT),
                             ))
-                            .gap(1.0.px()),
-                            flex_col((
+                            .gap(1.0_f64.px()),
+                            flex_col::<Edit<DemoState>, (), _>((
                                 label(format!("{:.4}", state.lfo_speed))
                                     .text_size(9.0)
                                     .color(TEXT_COLOR),
-                                knob(
+                                knob::<Edit<DemoState>, ()>(
                                     0.00001,
                                     0.001,
                                     state.lfo_speed,
@@ -234,47 +236,47 @@ fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
                                 .small(),
                                 label("Speed").text_size(9.0).color(DIM_TEXT),
                             ))
-                            .gap(1.0.px()),
-                            flex_col((
-                                push_button(state.lfo_enabled, |s: &mut DemoState, v| {
+                            .gap(1.0_f64.px()),
+                            flex_col::<Edit<DemoState>, (), _>((
+                                push_button::<Edit<DemoState>, ()>(state.lfo_enabled, |s: &mut DemoState, v| {
                                     s.lfo_enabled = v;
                                     s.dsp.params.set_lfo_enabled(v);
                                 }),
                                 label("LFO").text_size(9.0).color(DIM_TEXT),
                             ))
-                            .gap(1.0.px()),
+                            .gap(1.0_f64.px()),
                         ))
-                        .gap(6.0.px()),
+                        .gap(6.0_f64.px()),
                     ))
-                    .gap(4.0.px()),
+                    .gap(4.0_f64.px()),
                 ),
                 // Output fader
-                group_box(
+                group_box::<Edit<DemoState>, (), _>(
                     "Output",
-                    flex_col((
+                    flex_col::<Edit<DemoState>, (), _>((
                         label(db_text).text_size(11.0).color(TEXT_COLOR),
-                        fader(-60.0, 6.0, state.volume_db, -12.0, |s: &mut DemoState, v| {
+                        fader::<Edit<DemoState>, ()>(-60.0, 6.0, state.volume_db, -12.0, |s: &mut DemoState, v| {
                             s.volume_db = v;
                             s.dsp.params.volume_db.store(v as f32);
                         }),
                         label("Volume").text_size(10.0).color(DIM_TEXT),
-                        push_button(state.mute, |s: &mut DemoState, v| {
+                        push_button::<Edit<DemoState>, ()>(state.mute, |s: &mut DemoState, v| {
                             s.mute = v;
                             s.dsp.params.set_mute(v);
                         }),
                         label("Mute").text_size(9.0).color(DIM_TEXT),
                     ))
-                    .gap(2.0.px()),
+                    .gap(2.0_f64.px()),
                 ),
                 // Scope
-                group_box::<DemoState, (), _>(
+                group_box::<Edit<DemoState>, (), _>(
                     "Scope",
                     scope(Some(state.dsp.scope_source())),
                 ),
                 // Info
-                group_box::<DemoState, (), _>(
+                group_box::<Edit<DemoState>, (), _>(
                     "Info",
-                    flex_col((
+                    flex_col::<Edit<DemoState>, (), _>((
                         label("Knobs").text_size(11.0).color(TEXT_COLOR),
                         label("  Drag up/down to adjust").text_size(10.0).color(DIM_TEXT),
                         label("  Double-click resets to default").text_size(10.0).color(DIM_TEXT),
@@ -290,15 +292,14 @@ fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
                         label("  Tintable background container").text_size(10.0).color(DIM_TEXT),
                     ))
                     .cross_axis_alignment(CrossAxisAlignment::Start)
-                    .gap(1.0.px()),
+                    .gap(1.0_f64.px()),
                 ).fill().flex(1.0),
             ))
-            .cross_axis_alignment(CrossAxisAlignment::Fill)
-            .must_fill_major_axis(true)
-            .gap(4.0.px()),
+            .cross_axis_alignment(CrossAxisAlignment::Stretch)
+            .gap(4.0_f64.px()),
         ))
-        .cross_axis_alignment(CrossAxisAlignment::Fill)
-        .gap(4.0.px()),
+        .cross_axis_alignment(CrossAxisAlignment::Stretch)
+        .gap(4.0_f64.px()),
     )
     .tint(IVORY)
 }

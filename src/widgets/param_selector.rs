@@ -7,16 +7,17 @@
 
 use xilem::masonry::accesskit::{Node, Role};
 use xilem::masonry::core::{
-    AccessCtx, BoxConstraints, BrushIndex, EventCtx, LayoutCtx, PaintCtx, PointerButtonEvent,
-    PointerEvent, PropertiesMut, PropertiesRef, RegisterCtx, StyleProperty, Update, UpdateCtx,
-    Widget, WidgetId, WidgetMut, render_text,
+    AccessCtx, BrushIndex, ChildrenIds, EventCtx, LayoutCtx, MeasureCtx, PaintCtx,
+    PointerButtonEvent, PointerEvent, PropertiesMut, PropertiesRef, RegisterCtx, StyleProperty,
+    Update, UpdateCtx, Widget, WidgetId, WidgetMut, render_text,
 };
+use xilem::masonry::kurbo::Axis;
+use xilem::masonry::layout::LenReq;
 use xilem::masonry::vello::Scene;
 use xilem::masonry::vello::kurbo::{Affine, Circle, Point, Rect, RoundedRect, Size, Stroke, Vec2};
 use xilem::masonry::vello::peniko::{Color, Fill};
 
 use xilem::masonry::parley::Layout;
-use smallvec::SmallVec;
 use tracing::trace_span;
 
 use crate::theme::DEFAULT_TINT;
@@ -45,7 +46,6 @@ pub struct ParamSelector {
     labels: Vec<String>,
     label_align: LabelAlign,
     tint: Color,
-    /// Pre-built text layouts for each label
     text_layouts: Vec<Layout<BrushIndex>>,
     needs_layout: bool,
 }
@@ -80,7 +80,10 @@ impl ParamSelector {
     pub fn set_labels(this: &mut WidgetMut<'_, Self>, labels: Vec<String>) {
         this.widget.count = labels.len();
         this.widget.labels = labels;
-        this.widget.selected = this.widget.selected.min(this.widget.count.saturating_sub(1));
+        this.widget.selected = this
+            .widget
+            .selected
+            .min(this.widget.count.saturating_sub(1));
         this.widget.needs_layout = true;
         this.ctx.request_layout();
     }
@@ -116,15 +119,46 @@ impl ParamSelector {
     fn dot_col_w() -> f64 {
         DOT_RADIUS * 2.0 + DOT_MARGIN * 2.0
     }
+
+    fn build_text_layouts(&mut self, ctx: &mut MeasureCtx<'_>) {
+        let (font_ctx, layout_ctx) = ctx.text_contexts();
+        self.text_layouts.clear();
+        for label in &self.labels {
+            let mut builder = layout_ctx.ranged_builder(font_ctx, label, 1.0, true);
+            builder.push_default(StyleProperty::FontSize(FONT_SIZE));
+            let mut layout = builder.build(label);
+            layout.break_all_lines(None);
+            self.text_layouts.push(layout);
+        }
+        self.needs_layout = false;
+    }
+
+    fn build_text_layouts_layout(&mut self, ctx: &mut LayoutCtx<'_>) {
+        let (font_ctx, layout_ctx) = ctx.text_contexts();
+        self.text_layouts.clear();
+        for label in &self.labels {
+            let mut builder = layout_ctx.ranged_builder(font_ctx, label, 1.0, true);
+            builder.push_default(StyleProperty::FontSize(FONT_SIZE));
+            let mut layout = builder.build(label);
+            layout.break_all_lines(None);
+            self.text_layouts.push(layout);
+        }
+        self.needs_layout = false;
+    }
 }
 
 impl Widget for ParamSelector {
     type Action = usize;
 
     fn on_pointer_event(
-        &mut self, ctx: &mut EventCtx<'_>, _props: &mut PropertiesMut<'_>, event: &PointerEvent,
+        &mut self,
+        ctx: &mut EventCtx<'_>,
+        _props: &mut PropertiesMut<'_>,
+        event: &PointerEvent,
     ) {
-        if ctx.is_disabled() { return; }
+        if ctx.is_disabled() {
+            return;
+        }
         if let PointerEvent::Up(PointerButtonEvent { state, .. }) = event {
             let pos = ctx.local_position(state.position);
             if let Some(idx) = self.hit_test(pos, ctx.size()) {
@@ -137,35 +171,49 @@ impl Widget for ParamSelector {
         }
     }
 
-    fn accepts_pointer_interaction(&self) -> bool { true }
+    fn accepts_pointer_interaction(&self) -> bool {
+        true
+    }
     fn register_children(&mut self, _ctx: &mut RegisterCtx<'_>) {}
-    fn update(&mut self, _ctx: &mut UpdateCtx<'_>, _props: &mut PropertiesMut<'_>, _event: &Update) {}
+    fn update(
+        &mut self,
+        _ctx: &mut UpdateCtx<'_>,
+        _props: &mut PropertiesMut<'_>,
+        _event: &Update,
+    ) {
+    }
 
-    fn layout(
-        &mut self, ctx: &mut LayoutCtx<'_>, _props: &mut PropertiesMut<'_>, bc: &BoxConstraints,
-    ) -> Size {
-        // Build text layouts for each label
+    fn measure(
+        &mut self,
+        ctx: &mut MeasureCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        axis: Axis,
+        _len_req: LenReq,
+        _cross_length: Option<f64>,
+    ) -> f64 {
         if self.needs_layout || ctx.fonts_changed() {
-            let (font_ctx, layout_ctx) = ctx.text_contexts();
-            self.text_layouts.clear();
-            for label in &self.labels {
-                let mut builder = layout_ctx.ranged_builder(font_ctx, label, 1.0, true);
-                builder.push_default(StyleProperty::FontSize(FONT_SIZE));
-                let mut layout = builder.build(label);
-                layout.break_all_lines(None);
-                self.text_layouts.push(layout);
-            }
-            self.needs_layout = false;
+            self.build_text_layouts(ctx);
         }
 
-        // Compute width from actual text widths
-        let dot_col_w = Self::dot_col_w();
-        let max_text_w = self.text_layouts.iter()
-            .map(|l| l.width() as f64)
-            .fold(0.0_f64, f64::max);
-        let w = max_text_w + dot_col_w + LABEL_GAP;
-        let h = self.count as f64 * ROW_HEIGHT;
-        bc.constrain(Size::new(w, h))
+        match axis {
+            Axis::Horizontal => {
+                let dot_col_w = Self::dot_col_w();
+                let max_text_w = self
+                    .text_layouts
+                    .iter()
+                    .map(|l| l.width() as f64)
+                    .fold(0.0_f64, f64::max);
+                max_text_w + dot_col_w + LABEL_GAP
+            }
+            Axis::Vertical => self.count as f64 * ROW_HEIGHT,
+        }
+    }
+
+    fn layout(&mut self, ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, _size: Size) {
+        if self.needs_layout || ctx.fonts_changed() {
+            self.build_text_layouts_layout(ctx);
+        }
+        ctx.set_baseline_offset(0.);
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, scene: &mut Scene) {
@@ -180,12 +228,26 @@ impl Widget for ParamSelector {
             LabelAlign::Right => dot_col_w / 2.0,
         };
         let frame_rect = Rect::new(
-            dot_center_x - frame_w / 2.0, frame_pad,
-            dot_center_x + frame_w / 2.0, size.height - frame_pad,
+            dot_center_x - frame_w / 2.0,
+            frame_pad,
+            dot_center_x + frame_w / 2.0,
+            size.height - frame_pad,
         );
         let frame_rr = RoundedRect::from_rect(frame_rect, frame_w / 2.0);
-        scene.fill(Fill::NonZero, Affine::IDENTITY, Color::from_rgb8(0x2A, 0x2A, 0x2A), None, &frame_rr);
-        scene.stroke(&Stroke::new(1.0), Affine::IDENTITY, Color::from_rgb8(0x55, 0x55, 0x55), None, &frame_rr);
+        scene.fill(
+            Fill::NonZero,
+            Affine::IDENTITY,
+            Color::from_rgb8(0x2A, 0x2A, 0x2A),
+            None,
+            &frame_rr,
+        );
+        scene.stroke(
+            &Stroke::new(1.0),
+            Affine::IDENTITY,
+            Color::from_rgb8(0x55, 0x55, 0x55),
+            None,
+            &frame_rr,
+        );
 
         for i in 0..self.count {
             let (y0, _) = self.row_rect(i, size);
@@ -194,14 +256,18 @@ impl Widget for ParamSelector {
             let left = self.label_on_left(i);
 
             // Dot
-            let dot_x = if left { size.width - dot_col_w / 2.0 } else { dot_col_w / 2.0 };
+            let dot_x = if left {
+                size.width - dot_col_w / 2.0
+            } else {
+                dot_col_w / 2.0
+            };
             let center = Point::new(dot_x, cy);
             if is_selected {
                 let dot = Circle::new(center, DOT_RADIUS + 1.5);
                 scene.fill(Fill::NonZero, Affine::IDENTITY, self.tint, None, &dot);
             }
 
-            // Text label via parley layout
+            // Text label
             if let Some(layout) = self.text_layouts.get(i) {
                 let text_color = if is_selected {
                     Color::from_rgb8(0xEE, 0xEE, 0xEE)
@@ -229,17 +295,24 @@ impl Widget for ParamSelector {
         }
     }
 
-    fn accessibility_role(&self) -> Role { Role::RadioGroup }
+    fn accessibility_role(&self) -> Role {
+        Role::RadioGroup
+    }
 
     fn accessibility(
-        &mut self, _ctx: &mut AccessCtx<'_>, _props: &PropertiesRef<'_>, node: &mut Node,
+        &mut self,
+        _ctx: &mut AccessCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        node: &mut Node,
     ) {
         if self.selected < self.labels.len() {
             node.set_description(self.labels[self.selected].clone());
         }
     }
 
-    fn children_ids(&self) -> SmallVec<[WidgetId; 16]> { SmallVec::new() }
+    fn children_ids(&self) -> ChildrenIds {
+        ChildrenIds::default()
+    }
 
     fn make_trace_span(&self, id: WidgetId) -> tracing::Span {
         trace_span!("ParamSelector", id = id.trace())

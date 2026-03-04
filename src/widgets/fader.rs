@@ -7,17 +7,18 @@
 
 use xilem::masonry::accesskit::{Node, Role};
 use xilem::masonry::core::{
-    AccessCtx, BoxConstraints, EventCtx, LayoutCtx, PaintCtx, PointerButtonEvent, PointerEvent,
-    PointerUpdate, PropertiesMut, PropertiesRef, RegisterCtx, Update, UpdateCtx, Widget, WidgetId,
-    WidgetMut,
+    AccessCtx, ChildrenIds, EventCtx, LayoutCtx, MeasureCtx, PaintCtx, PointerButtonEvent,
+    PointerEvent, PointerUpdate, PropertiesMut, PropertiesRef, RegisterCtx, Update, UpdateCtx,
+    Widget, WidgetId, WidgetMut,
 };
+use xilem::masonry::kurbo::Axis;
+use xilem::masonry::layout::LenReq;
 use xilem::masonry::vello::Scene;
 use xilem::masonry::vello::kurbo::{
     Affine, Cap, Line, Point, Rect, RoundedRect, Size, Stroke,
 };
 use xilem::masonry::vello::peniko::{Color, Fill};
 
-use smallvec::SmallVec;
 use tracing::trace_span;
 
 use crate::theme::DEFAULT_TINT;
@@ -73,7 +74,10 @@ impl Fader {
         this.ctx.request_render();
     }
 
-    pub fn with_tint(mut self, color: Color) -> Self { self.tint = color; self }
+    pub fn with_tint(mut self, color: Color) -> Self {
+        self.tint = color;
+        self
+    }
 
     pub fn set_tint(this: &mut WidgetMut<'_, Self>, color: Color) {
         this.widget.tint = color;
@@ -183,15 +187,30 @@ impl Widget for Fader {
 
     fn register_children(&mut self, _ctx: &mut RegisterCtx<'_>) {}
 
-    fn update(&mut self, _ctx: &mut UpdateCtx<'_>, _props: &mut PropertiesMut<'_>, _event: &Update) {}
-
-    fn layout(
+    fn update(
         &mut self,
-        _ctx: &mut LayoutCtx<'_>,
+        _ctx: &mut UpdateCtx<'_>,
         _props: &mut PropertiesMut<'_>,
-        bc: &BoxConstraints,
-    ) -> Size {
-        bc.constrain(Size::new(FADER_WIDTH, FADER_HEIGHT))
+        _event: &Update,
+    ) {
+    }
+
+    fn measure(
+        &mut self,
+        _ctx: &mut MeasureCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        axis: Axis,
+        _len_req: LenReq,
+        _cross_length: Option<f64>,
+    ) -> f64 {
+        match axis {
+            Axis::Horizontal => FADER_WIDTH,
+            Axis::Vertical => FADER_HEIGHT,
+        }
+    }
+
+    fn layout(&mut self, ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, _size: Size) {
+        ctx.set_baseline_offset(0.);
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, scene: &mut Scene) {
@@ -235,7 +254,7 @@ impl Widget for Fader {
             }
         }
 
-        // Prominent default mark at -12 dB
+        // Prominent default mark (double-click resets to this value)
         {
             let norm = Self::db_to_normalized(self.default_db, self.min_db, self.max_db);
             let y = track_bottom - norm * (track_bottom - track_top);
@@ -243,15 +262,25 @@ impl Widget for Fader {
             let default_stroke = Stroke::new(1.5);
             // Left tick
             scene.stroke(
-                &default_stroke, Affine::IDENTITY, default_color, None,
-                &Line::new(Point::new(cx - TRACK_WIDTH / 2.0 - 8.0, y),
-                           Point::new(cx - TRACK_WIDTH / 2.0 - 1.0, y)),
+                &default_stroke,
+                Affine::IDENTITY,
+                default_color,
+                None,
+                &Line::new(
+                    Point::new(cx - TRACK_WIDTH / 2.0 - 8.0, y),
+                    Point::new(cx - TRACK_WIDTH / 2.0 - 1.0, y),
+                ),
             );
             // Right tick
             scene.stroke(
-                &default_stroke, Affine::IDENTITY, default_color, None,
-                &Line::new(Point::new(cx + TRACK_WIDTH / 2.0 + 1.0, y),
-                           Point::new(cx + TRACK_WIDTH / 2.0 + 8.0, y)),
+                &default_stroke,
+                Affine::IDENTITY,
+                default_color,
+                None,
+                &Line::new(
+                    Point::new(cx + TRACK_WIDTH / 2.0 + 1.0, y),
+                    Point::new(cx + TRACK_WIDTH / 2.0 + 8.0, y),
+                ),
             );
         }
 
@@ -264,13 +293,7 @@ impl Widget for Fader {
                 cx + TRACK_WIDTH / 2.0 - 0.5,
                 track_bottom,
             );
-            scene.fill(
-                Fill::NonZero,
-                Affine::IDENTITY,
-                self.tint,
-                None,
-                &lit_rect,
-            );
+            scene.fill(Fill::NonZero, Affine::IDENTITY, self.tint, None, &lit_rect);
         }
 
         // Grip knob
@@ -331,8 +354,8 @@ impl Widget for Fader {
         node.set_max_numeric_value(self.max_db);
     }
 
-    fn children_ids(&self) -> SmallVec<[WidgetId; 16]> {
-        SmallVec::new()
+    fn children_ids(&self) -> ChildrenIds {
+        ChildrenIds::default()
     }
 
     fn make_trace_span(&self, id: WidgetId) -> tracing::Span {

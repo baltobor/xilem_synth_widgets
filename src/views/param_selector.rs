@@ -5,8 +5,7 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-use xilem::core::{MessageContext, Mut, View, ViewMarker};
-use xilem::core::MessageResult;
+use xilem::core::{Arg, MessageCtx, MessageResult, Mut, View, ViewArgument, ViewMarker};
 use xilem::{Pod, ViewCtx};
 
 pub use crate::widgets::param_selector::LabelAlign;
@@ -22,11 +21,11 @@ pub struct ParamSelector<F> {
 }
 
 /// Create a parameter selector with vertical text labels.
-pub fn param_selector<State, Action>(
+pub fn param_selector<State: ViewArgument, Action>(
     labels: Vec<String>,
     selected: usize,
-    on_change: impl Fn(&mut State, usize) -> Action + Send + Sync + 'static,
-) -> ParamSelector<impl Fn(&mut State, usize) -> Action + Send + Sync + 'static> {
+    on_change: impl Fn(Arg<'_, State>, usize) -> Action + Send + Sync + 'static,
+) -> ParamSelector<impl Fn(Arg<'_, State>, usize) -> Action + Send + Sync + 'static> {
     ParamSelector {
         labels,
         selected,
@@ -52,14 +51,18 @@ impl<F> ViewMarker for ParamSelector<F> {}
 
 impl<F, State, Action> View<State, Action, ViewCtx> for ParamSelector<F>
 where
-    State: 'static,
+    State: ViewArgument,
     Action: 'static,
-    F: Fn(&mut State, usize) -> Action + Send + Sync + 'static,
+    F: Fn(Arg<'_, State>, usize) -> Action + Send + Sync + 'static,
 {
     type Element = Pod<SelectorWidget>;
     type ViewState = ();
 
-    fn build(&self, ctx: &mut ViewCtx, _: &mut State) -> (Self::Element, Self::ViewState) {
+    fn build(
+        &self,
+        ctx: &mut ViewCtx,
+        _: Arg<'_, State>,
+    ) -> (Self::Element, Self::ViewState) {
         let mut w = SelectorWidget::new(self.labels.clone(), self.selected, self.label_align);
         if let Some(c) = self.tint {
             w = w.with_tint(c);
@@ -74,7 +77,7 @@ where
         _: &mut (),
         _: &mut ViewCtx,
         mut element: Mut<'_, Self::Element>,
-        _: &mut State,
+        _: Arg<'_, State>,
     ) {
         if prev.selected != self.selected {
             SelectorWidget::set_selected(&mut element, self.selected);
@@ -89,16 +92,21 @@ where
         }
     }
 
-    fn teardown(&self, _: &mut (), ctx: &mut ViewCtx, element: Mut<'_, Self::Element>) {
-        ctx.teardown_leaf(element);
+    fn teardown(
+        &self,
+        _: &mut (),
+        ctx: &mut ViewCtx,
+        element: Mut<'_, Self::Element>,
+    ) {
+        ctx.teardown_action_source(element);
     }
 
     fn message(
         &self,
         _: &mut (),
-        message: &mut MessageContext,
+        message: &mut MessageCtx,
         _: Mut<'_, Self::Element>,
-        state: &mut State,
+        state: Arg<'_, State>,
     ) -> MessageResult<Action> {
         if message.take_first().is_some() {
             return MessageResult::Stale;
