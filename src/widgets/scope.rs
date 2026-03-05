@@ -285,11 +285,11 @@ impl Widget for Scope {
     }
 
     fn layout(&mut self, ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, _size: Size) {
-        ctx.set_baseline_offset(0.);
+        ctx.clear_baselines();
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, scene: &mut Scene) {
-        let size = ctx.size();
+        let size = ctx.content_box_size();
         let rect = Rect::from_origin_size(Point::ZERO, size);
         let rr = RoundedRect::from_rect(rect, BORDER_RADIUS);
 

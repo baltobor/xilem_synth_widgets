@@ -6,7 +6,7 @@
 //! (compatible with the Xilem licence).
 
 use xilem::core::{
-    Arg, MessageCtx, MessageResult, Mut, View, ViewArgument, ViewId, ViewMarker, ViewPathTracker,
+    MessageCtx, MessageResult, Mut, View, ViewId, ViewMarker, ViewPathTracker,
 };
 use xilem::{Pod, ViewCtx, WidgetView};
 
@@ -24,7 +24,7 @@ pub struct GroupBox<V> {
 }
 
 /// Create a group box with a label and child content.
-pub fn group_box<State: ViewArgument, Action, V: WidgetView<State, Action>>(
+pub fn group_box<State: 'static, Action, V: WidgetView<State, Action>>(
     label: impl Into<String>,
     child: V,
 ) -> GroupBox<V> {
@@ -59,7 +59,7 @@ impl<V> ViewMarker for GroupBox<V> {}
 impl<V, State, Action> View<State, Action, ViewCtx> for GroupBox<V>
 where
     V: WidgetView<State, Action>,
-    State: ViewArgument,
+    State: 'static,
     Action: 'static,
 {
     type Element = Pod<GroupBoxWidget>;
@@ -68,7 +68,7 @@ where
     fn build(
         &self,
         ctx: &mut ViewCtx,
-        app_state: Arg<'_, State>,
+        app_state: &mut State,
     ) -> (Self::Element, Self::ViewState) {
         let (child_pod, child_state) = ctx.with_id(CHILD_VIEW_ID, |ctx| {
             self.child.build(ctx, app_state)
@@ -93,7 +93,7 @@ where
         view_state: &mut Self::ViewState,
         ctx: &mut ViewCtx,
         mut element: Mut<'_, Self::Element>,
-        app_state: Arg<'_, State>,
+        app_state: &mut State,
     ) {
         if prev.label != self.label {
             GroupBoxWidget::set_label(&mut element, &self.label);
@@ -143,7 +143,7 @@ where
         view_state: &mut Self::ViewState,
         message: &mut MessageCtx,
         mut element: Mut<'_, Self::Element>,
-        app_state: Arg<'_, State>,
+        app_state: &mut State,
     ) -> MessageResult<Action> {
         match message.take_first() {
             Some(CHILD_VIEW_ID) => self.child.message(

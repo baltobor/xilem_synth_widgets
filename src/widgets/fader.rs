@@ -152,7 +152,7 @@ impl Widget for Fader {
                 if ctx.is_active() {
                     if let Some(start_y) = self.drag_start_y {
                         let pos = ctx.local_position(current.position);
-                        let height = ctx.size().height;
+                        let height = ctx.content_box_size().height;
                         let (top, bottom) = Self::track_range(height);
                         let dy = start_y - pos.y;
                         let range = bottom - top;
@@ -210,11 +210,11 @@ impl Widget for Fader {
     }
 
     fn layout(&mut self, ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, _size: Size) {
-        ctx.set_baseline_offset(0.);
+        ctx.clear_baselines();
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, scene: &mut Scene) {
-        let size = ctx.size();
+        let size = ctx.content_box_size();
         let cx = size.width / 2.0;
         let (track_top, track_bottom) = Self::track_range(size.height);
 

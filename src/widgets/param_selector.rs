@@ -161,7 +161,7 @@ impl Widget for ParamSelector {
         }
         if let PointerEvent::Up(PointerButtonEvent { state, .. }) = event {
             let pos = ctx.local_position(state.position);
-            if let Some(idx) = self.hit_test(pos, ctx.size()) {
+            if let Some(idx) = self.hit_test(pos, ctx.content_box_size()) {
                 if self.selected != idx {
                     self.selected = idx;
                     ctx.submit_action::<usize>(idx);
@@ -191,7 +191,7 @@ impl Widget for ParamSelector {
         _len_req: LenReq,
         _cross_length: Option<f64>,
     ) -> f64 {
-        if self.needs_layout || ctx.fonts_changed() {
+        if self.needs_layout {
             self.build_text_layouts(ctx);
         }
 
@@ -210,14 +210,14 @@ impl Widget for ParamSelector {
     }
 
     fn layout(&mut self, ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, _size: Size) {
-        if self.needs_layout || ctx.fonts_changed() {
+        if self.needs_layout {
             self.build_text_layouts_layout(ctx);
         }
-        ctx.set_baseline_offset(0.);
+        ctx.clear_baselines();
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, scene: &mut Scene) {
-        let size = ctx.size();
+        let size = ctx.content_box_size();
         let dot_col_w = Self::dot_col_w();
 
         // Capsule frame centered on dot column

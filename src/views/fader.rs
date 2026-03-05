@@ -5,7 +5,7 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-use xilem::core::{Arg, MessageCtx, MessageResult, Mut, View, ViewArgument, ViewMarker};
+use xilem::core::{MessageCtx, MessageResult, Mut, View, ViewMarker};
 use xilem::{Pod, ViewCtx};
 
 use crate::widgets::fader::Fader as FaderWidget;
@@ -25,13 +25,13 @@ pub struct Fader<F> {
 /// Create a vertical fader. Values are in dB. Typical range: -60.0 to 6.0.
 ///
 /// `default_db` is the value restored on double-click.
-pub fn fader<State: ViewArgument, Action>(
+pub fn fader<State: 'static, Action>(
     min_db: f64,
     max_db: f64,
     value_db: f64,
     default_db: f64,
-    on_change: impl Fn(Arg<'_, State>, f64) -> Action + Send + Sync + 'static,
-) -> Fader<impl Fn(Arg<'_, State>, f64) -> Action + Send + Sync + 'static> {
+    on_change: impl Fn(&mut State, f64) -> Action + Send + Sync + 'static,
+) -> Fader<impl Fn(&mut State, f64) -> Action + Send + Sync + 'static> {
     Fader {
         min_db,
         max_db,
@@ -53,9 +53,9 @@ impl<F> ViewMarker for Fader<F> {}
 
 impl<F, State, Action> View<State, Action, ViewCtx> for Fader<F>
 where
-    State: ViewArgument,
+    State: 'static,
     Action: 'static,
-    F: Fn(Arg<'_, State>, f64) -> Action + Send + Sync + 'static,
+    F: Fn(&mut State, f64) -> Action + Send + Sync + 'static,
 {
     type Element = Pod<FaderWidget>;
     type ViewState = ();
@@ -63,7 +63,7 @@ where
     fn build(
         &self,
         ctx: &mut ViewCtx,
-        _: Arg<'_, State>,
+        _: &mut State,
     ) -> (Self::Element, Self::ViewState) {
         let mut w = FaderWidget::new(self.min_db, self.max_db, self.value_db, self.default_db);
         if let Some(c) = self.tint {
@@ -79,7 +79,7 @@ where
         _: &mut (),
         _: &mut ViewCtx,
         mut element: Mut<'_, Self::Element>,
-        _: Arg<'_, State>,
+        _: &mut State,
     ) {
         if prev.value_db != self.value_db {
             FaderWidget::set_value_db(&mut element, self.value_db);
@@ -108,7 +108,7 @@ where
         _: &mut (),
         message: &mut MessageCtx,
         _: Mut<'_, Self::Element>,
-        state: Arg<'_, State>,
+        state: &mut State,
     ) -> MessageResult<Action> {
         if message.take_first().is_some() {
             return MessageResult::Stale;

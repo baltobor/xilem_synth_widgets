@@ -5,7 +5,7 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-use xilem::core::{Arg, MessageCtx, MessageResult, Mut, View, ViewArgument, ViewMarker};
+use xilem::core::{MessageCtx, MessageResult, Mut, View, ViewMarker};
 use xilem::{Pod, ViewCtx};
 
 use crate::widgets::scope::Scope as ScopeWidget;
@@ -44,7 +44,7 @@ impl ViewMarker for Scope {}
 
 impl<State, Action> View<State, Action, ViewCtx> for Scope
 where
-    State: ViewArgument,
+    State: 'static,
     Action: 'static,
 {
     type Element = Pod<ScopeWidget>;
@@ -54,7 +54,7 @@ where
     fn build(
         &self,
         ctx: &mut ViewCtx,
-        _: Arg<'_, State>,
+        _: &mut State,
     ) -> (Self::Element, Self::ViewState) {
         let mut w = ScopeWidget::new();
         if let Some(c) = self.wave_color {
@@ -76,7 +76,7 @@ where
         view_state: &mut Self::ViewState,
         _: &mut ViewCtx,
         mut element: Mut<'_, Self::Element>,
-        _: Arg<'_, State>,
+        _: &mut State,
     ) {
         let source_id = self.source.as_ref().map_or(0, |s| s.id());
         if source_id != *view_state {
@@ -101,7 +101,7 @@ where
         _: &mut Self::ViewState,
         _message: &mut MessageCtx,
         _: Mut<'_, Self::Element>,
-        _: Arg<'_, State>,
+        _: &mut State,
     ) -> MessageResult<Action> {
         MessageResult::Stale
     }

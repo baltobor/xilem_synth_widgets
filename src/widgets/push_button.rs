@@ -117,11 +117,11 @@ impl Widget for PushButton {
     }
 
     fn layout(&mut self, ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, _size: Size) {
-        ctx.set_baseline_offset(0.);
+        ctx.clear_baselines();
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, scene: &mut Scene) {
-        let size = ctx.size();
+        let size = ctx.content_box_size();
         let cx = size.width / 2.0;
         let cy = size.height / 2.0;
 

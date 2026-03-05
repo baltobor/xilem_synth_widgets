@@ -5,7 +5,7 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-use xilem::core::{Arg, MessageCtx, MessageResult, Mut, View, ViewArgument, ViewMarker};
+use xilem::core::{MessageCtx, MessageResult, Mut, View, ViewMarker};
 use xilem::{Pod, ViewCtx};
 
 pub use crate::widgets::param_selector::LabelAlign;
@@ -21,11 +21,11 @@ pub struct ParamSelector<F> {
 }
 
 /// Create a parameter selector with vertical text labels.
-pub fn param_selector<State: ViewArgument, Action>(
+pub fn param_selector<State: 'static, Action>(
     labels: Vec<String>,
     selected: usize,
-    on_change: impl Fn(Arg<'_, State>, usize) -> Action + Send + Sync + 'static,
-) -> ParamSelector<impl Fn(Arg<'_, State>, usize) -> Action + Send + Sync + 'static> {
+    on_change: impl Fn(&mut State, usize) -> Action + Send + Sync + 'static,
+) -> ParamSelector<impl Fn(&mut State, usize) -> Action + Send + Sync + 'static> {
     ParamSelector {
         labels,
         selected,
@@ -51,9 +51,9 @@ impl<F> ViewMarker for ParamSelector<F> {}
 
 impl<F, State, Action> View<State, Action, ViewCtx> for ParamSelector<F>
 where
-    State: ViewArgument,
+    State: 'static,
     Action: 'static,
-    F: Fn(Arg<'_, State>, usize) -> Action + Send + Sync + 'static,
+    F: Fn(&mut State, usize) -> Action + Send + Sync + 'static,
 {
     type Element = Pod<SelectorWidget>;
     type ViewState = ();
@@ -61,7 +61,7 @@ where
     fn build(
         &self,
         ctx: &mut ViewCtx,
-        _: Arg<'_, State>,
+        _: &mut State,
     ) -> (Self::Element, Self::ViewState) {
         let mut w = SelectorWidget::new(self.labels.clone(), self.selected, self.label_align);
         if let Some(c) = self.tint {
@@ -77,7 +77,7 @@ where
         _: &mut (),
         _: &mut ViewCtx,
         mut element: Mut<'_, Self::Element>,
-        _: Arg<'_, State>,
+        _: &mut State,
     ) {
         if prev.selected != self.selected {
             SelectorWidget::set_selected(&mut element, self.selected);
@@ -106,7 +106,7 @@ where
         _: &mut (),
         message: &mut MessageCtx,
         _: Mut<'_, Self::Element>,
-        state: Arg<'_, State>,
+        state: &mut State,
     ) -> MessageResult<Action> {
         if message.take_first().is_some() {
             return MessageResult::Stale;

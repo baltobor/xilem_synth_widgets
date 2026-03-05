@@ -5,7 +5,7 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-use xilem::core::{Arg, MessageCtx, MessageResult, Mut, View, ViewArgument, ViewMarker};
+use xilem::core::{MessageCtx, MessageResult, Mut, View, ViewMarker};
 use xilem::{Pod, ViewCtx};
 
 use crate::widgets::push_button::PushButton as ButtonWidget;
@@ -18,10 +18,10 @@ pub struct PushButton<F> {
 }
 
 /// Create a push button (boolean toggle).
-pub fn push_button<State: ViewArgument, Action>(
+pub fn push_button<State: 'static, Action>(
     active: bool,
-    on_toggle: impl Fn(Arg<'_, State>, bool) -> Action + Send + Sync + 'static,
-) -> PushButton<impl Fn(Arg<'_, State>, bool) -> Action + Send + Sync + 'static> {
+    on_toggle: impl Fn(&mut State, bool) -> Action + Send + Sync + 'static,
+) -> PushButton<impl Fn(&mut State, bool) -> Action + Send + Sync + 'static> {
     PushButton {
         active,
         on_toggle,
@@ -40,9 +40,9 @@ impl<F> ViewMarker for PushButton<F> {}
 
 impl<F, State, Action> View<State, Action, ViewCtx> for PushButton<F>
 where
-    State: ViewArgument,
+    State: 'static,
     Action: 'static,
-    F: Fn(Arg<'_, State>, bool) -> Action + Send + Sync + 'static,
+    F: Fn(&mut State, bool) -> Action + Send + Sync + 'static,
 {
     type Element = Pod<ButtonWidget>;
     type ViewState = ();
@@ -50,7 +50,7 @@ where
     fn build(
         &self,
         ctx: &mut ViewCtx,
-        _: Arg<'_, State>,
+        _: &mut State,
     ) -> (Self::Element, Self::ViewState) {
         let mut w = ButtonWidget::new(self.active);
         if let Some(c) = self.tint {
@@ -66,7 +66,7 @@ where
         _: &mut (),
         _: &mut ViewCtx,
         mut element: Mut<'_, Self::Element>,
-        _: Arg<'_, State>,
+        _: &mut State,
     ) {
         if prev.active != self.active {
             ButtonWidget::set_active(&mut element, self.active);
@@ -92,7 +92,7 @@ where
         _: &mut (),
         message: &mut MessageCtx,
         _: Mut<'_, Self::Element>,
-        state: Arg<'_, State>,
+        state: &mut State,
     ) -> MessageResult<Action> {
         if message.take_first().is_some() {
             return MessageResult::Stale;

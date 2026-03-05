@@ -8,7 +8,7 @@ description = "Synth-style UI widgets for Xilem: knobs, faders, scopes, selector
 
 [dependencies]
 # Use same git revision as xilem_baseview for compatibility
-xilem = { git = "https://github.com/linebender/xilem", rev = "210c94a" }
+xilem = { git = "https://github.com/linebender/xilem", rev = "d3bf3056c2b7d66dc5677879c560111a96de832f" }
 tracing = "0.1"
 smallvec = "1"
 triple_buffer = "8"

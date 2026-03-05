@@ -330,7 +330,7 @@ impl Widget for GroupBox {
         cross_length: Option<f64>,
     ) -> f64 {
         // Build label text layout if needed
-        if self.needs_layout || ctx.fonts_changed() {
+        if self.needs_layout {
             let (font_ctx, layout_ctx) = ctx.text_contexts();
             let mut builder = layout_ctx.ranged_builder(font_ctx, &self.label, 1.0, true);
             builder.push_default(StyleProperty::FontSize(LABEL_FONT_SIZE));
@@ -364,7 +364,7 @@ impl Widget for GroupBox {
 
     fn layout(&mut self, ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, size: Size) {
         // Build label text layout if needed
-        if self.needs_layout || ctx.fonts_changed() {
+        if self.needs_layout {
             let (font_ctx, layout_ctx) = ctx.text_contexts();
             let mut builder = layout_ctx.ranged_builder(font_ctx, &self.label, 1.0, true);
             builder.push_default(StyleProperty::FontSize(LABEL_FONT_SIZE));
@@ -380,11 +380,11 @@ impl Widget for GroupBox {
         );
         ctx.run_layout(&mut self.child, child_size);
         ctx.place_child(&mut self.child, Point::new(PADDING, LABEL_HEIGHT + PADDING));
-        ctx.set_baseline_offset(0.);
+        ctx.clear_baselines();
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, scene: &mut Scene) {
-        let size = ctx.size();
+        let size = ctx.content_box_size();
         let rect = Rect::from_origin_size(Point::ZERO, size);
         let rr = RoundedRect::from_rect(rect, CORNER_RADIUS);
 

@@ -5,7 +5,7 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-use xilem::core::{Arg, MessageCtx, MessageResult, Mut, View, ViewArgument, ViewMarker};
+use xilem::core::{MessageCtx, MessageResult, Mut, View, ViewMarker};
 use xilem::{Pod, ViewCtx};
 
 use crate::widgets::knob::Knob as KnobWidget;
@@ -28,13 +28,13 @@ pub struct Knob<F> {
 /// Create a rotary knob.
 ///
 /// `default` is the reference value - the lit arc shows distance from it.
-pub fn knob<State: ViewArgument, Action>(
+pub fn knob<State: 'static, Action>(
     min: f64,
     max: f64,
     value: f64,
     default: f64,
-    on_change: impl Fn(Arg<'_, State>, f64) -> Action + Send + Sync + 'static,
-) -> Knob<impl Fn(Arg<'_, State>, f64) -> Action + Send + Sync + 'static> {
+    on_change: impl Fn(&mut State, f64) -> Action + Send + Sync + 'static,
+) -> Knob<impl Fn(&mut State, f64) -> Action + Send + Sync + 'static> {
     Knob {
         min,
         max,
@@ -67,9 +67,9 @@ impl<F> ViewMarker for Knob<F> {}
 
 impl<F, State, Action> View<State, Action, ViewCtx> for Knob<F>
 where
-    State: ViewArgument,
+    State: 'static,
     Action: 'static,
-    F: Fn(Arg<'_, State>, f64) -> Action + Send + Sync + 'static,
+    F: Fn(&mut State, f64) -> Action + Send + Sync + 'static,
 {
     type Element = Pod<KnobWidget>;
     type ViewState = ();
@@ -77,7 +77,7 @@ where
     fn build(
         &self,
         ctx: &mut ViewCtx,
-        _: Arg<'_, State>,
+        _: &mut State,
     ) -> (Self::Element, Self::ViewState) {
         let mut w = KnobWidget::new(self.min, self.max, self.value, self.default)
             .with_small(self.small);
@@ -97,7 +97,7 @@ where
         _: &mut (),
         _: &mut ViewCtx,
         mut element: Mut<'_, Self::Element>,
-        _: Arg<'_, State>,
+        _: &mut State,
     ) {
         if prev.value != self.value {
             KnobWidget::set_value(&mut element, self.value);
@@ -126,7 +126,7 @@ where
         _: &mut (),
         message: &mut MessageCtx,
         _: Mut<'_, Self::Element>,
-        state: Arg<'_, State>,
+        state: &mut State,
     ) -> MessageResult<Action> {
         if message.take_first().is_some() {
             return MessageResult::Stale;
