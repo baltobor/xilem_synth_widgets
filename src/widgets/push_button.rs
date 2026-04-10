@@ -7,12 +7,13 @@
 
 use xilem::masonry::accesskit::{Node, Role};
 use xilem::masonry::core::{
-    AccessCtx, BoxConstraints, EventCtx, LayoutCtx, PaintCtx, PointerButtonEvent, PointerEvent,
+    AccessCtx, EventCtx, LayoutCtx, MeasureCtx, PaintCtx, PointerButtonEvent, PointerEvent,
     PropertiesMut, PropertiesRef, RegisterCtx, Update, UpdateCtx, Widget, WidgetId, WidgetMut,
 };
-use xilem::masonry::vello::Scene;
-use xilem::masonry::vello::kurbo::{Affine, Circle, Point, Size};
-use xilem::masonry::vello::peniko::{Color, Fill};
+use xilem::masonry::imaging::Painter;
+use xilem::masonry::kurbo::{Axis, Circle, Point, Size, Stroke};
+use xilem::masonry::layout::LenReq;
+use xilem::masonry::peniko::{Color, Fill};
 
 use smallvec::SmallVec;
 use tracing::trace_span;
@@ -93,18 +94,27 @@ impl Widget for PushButton {
 
     fn update(&mut self, _ctx: &mut UpdateCtx<'_>, _props: &mut PropertiesMut<'_>, _event: &Update) {}
 
+    fn measure(
+        &mut self,
+        _ctx: &mut MeasureCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        _axis: Axis,
+        _len_req: LenReq,
+        _cross_length: Option<f64>,
+    ) -> f64 {
+        BUTTON_RADIUS * 2.0 + 4.0
+    }
+
     fn layout(
         &mut self,
         _ctx: &mut LayoutCtx<'_>,
-        _props: &mut PropertiesMut<'_>,
-        bc: &BoxConstraints,
-    ) -> Size {
-        let side = BUTTON_RADIUS * 2.0 + 4.0;
-        bc.constrain(Size::new(side, side))
+        _props: &PropertiesRef<'_>,
+        _size: Size,
+    ) {
     }
 
-    fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, scene: &mut Scene) {
-        let size = ctx.size();
+    fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, painter: &mut Painter<'_>) {
+        let size = ctx.content_box_size();
         let cx = size.width / 2.0;
         let cy = size.height / 2.0;
 
@@ -112,13 +122,7 @@ impl Widget for PushButton {
 
         // Outer ring
         let ring_color = Color::from_rgb8(0x60, 0x60, 0x60);
-        scene.stroke(
-            &xilem::masonry::vello::kurbo::Stroke::new(1.5),
-            Affine::IDENTITY,
-            ring_color,
-            None,
-            &circle,
-        );
+        painter.stroke(circle, &Stroke::new(1.5), ring_color).draw();
 
         // Fill based on state
         let fill_color = if self.active {
@@ -132,7 +136,7 @@ impl Widget for PushButton {
         };
 
         let inner = Circle::new(Point::new(cx, cy), BUTTON_RADIUS - 1.5);
-        scene.fill(Fill::NonZero, Affine::IDENTITY, fill_color, None, &inner);
+        painter.fill(inner, fill_color).fill_rule(Fill::NonZero).draw();
     }
 
     fn accessibility_role(&self) -> Role {

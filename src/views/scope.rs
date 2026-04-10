@@ -5,7 +5,7 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-use xilem::core::{MessageContext, Mut, View, ViewMarker};
+use xilem::core::{MessageCtx, Mut, View, ViewMarker};
 use xilem::core::MessageResult;
 use xilem::{Pod, ViewCtx};
 
@@ -38,7 +38,7 @@ pub use crate::widgets::scope::{ScopeBuffer, ScopeSource};
 /// Xilem to rebuild the entire view tree on every audio buffer.
 pub struct Scope {
     source: Option<ScopeSource>,
-    wave_color: Option<xilem::masonry::vello::peniko::Color>,
+    wave_color: Option<xilem::Color>,
 }
 
 /// Create an oscilloscope view.
@@ -59,7 +59,7 @@ pub fn scope(source: Option<ScopeSource>) -> Scope {
 }
 
 impl Scope {
-    pub fn wave_color(mut self, color: xilem::masonry::vello::peniko::Color) -> Self {
+    pub fn wave_color(mut self, color: xilem::Color) -> Self {
         self.wave_color = Some(color);
         self
     }
@@ -109,13 +109,13 @@ where
     }
 
     fn teardown(&self, _: &mut Self::ViewState, ctx: &mut ViewCtx, element: Mut<'_, Self::Element>) {
-        ctx.teardown_leaf(element);
+        ctx.teardown_action_source(element);
     }
 
     fn message(
         &self,
         _: &mut Self::ViewState,
-        _message: &mut MessageContext,
+        _message: &mut MessageCtx,
         _: Mut<'_, Self::Element>,
         _: &mut State,
     ) -> MessageResult<Action> {

@@ -5,7 +5,7 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-use xilem::core::{MessageContext, Mut, View, ViewMarker};
+use xilem::core::{MessageCtx, Mut, View, ViewMarker};
 use xilem::core::MessageResult;
 use xilem::{Pod, ViewCtx};
 
@@ -20,7 +20,7 @@ pub struct Fader<F> {
     value_db: f64,
     default_db: f64,
     on_change: F,
-    tint: Option<xilem::masonry::vello::peniko::Color>,
+    tint: Option<xilem::Color>,
 }
 
 /// Create a vertical fader. Values are in dB. Typical range: -60.0 to 6.0.
@@ -37,7 +37,7 @@ pub fn fader<State, Action>(
 }
 
 impl<F> Fader<F> {
-    pub fn tint(mut self, color: xilem::masonry::vello::peniko::Color) -> Self {
+    pub fn tint(mut self, color: xilem::Color) -> Self {
         self.tint = Some(color);
         self
     }
@@ -75,11 +75,11 @@ where
     }
 
     fn teardown(&self, _: &mut (), ctx: &mut ViewCtx, element: Mut<'_, Self::Element>) {
-        ctx.teardown_leaf(element);
+        ctx.teardown_action_source(element);
     }
 
     fn message(
-        &self, _: &mut (), message: &mut MessageContext,
+        &self, _: &mut (), message: &mut MessageCtx,
         _: Mut<'_, Self::Element>, state: &mut State,
     ) -> MessageResult<Action> {
         if message.take_first().is_some() { return MessageResult::Stale; }

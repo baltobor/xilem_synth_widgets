@@ -7,9 +7,10 @@
 
 use std::sync::Arc;
 
-use xilem::masonry::properties::types::{AsUnit, CrossAxisAlignment};
-use xilem::masonry::vello::peniko::Color;
-use xilem::style::Style;
+use xilem::masonry::layout::AsUnit;
+use xilem::masonry::properties::types::CrossAxisAlignment;
+use xilem::Color;
+use xilem::style::Style as _;
 use xilem::view::{flex_col, flex_row, label, FlexExt as _, FlexSpacer};
 use xilem::{EventLoop, WidgetView, WindowOptions, Xilem};
 
@@ -293,11 +294,10 @@ fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
                     .gap(1.0.px()),
                 ).fill().flex(1.0),
             ))
-            .cross_axis_alignment(CrossAxisAlignment::Fill)
-            .must_fill_major_axis(true)
+            .cross_axis_alignment(CrossAxisAlignment::Stretch)
             .gap(4.0.px()),
         ))
-        .cross_axis_alignment(CrossAxisAlignment::Fill)
+        .cross_axis_alignment(CrossAxisAlignment::Stretch)
         .gap(4.0.px()),
     )
     .tint(IVORY)

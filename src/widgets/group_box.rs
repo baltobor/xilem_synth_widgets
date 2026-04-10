@@ -7,13 +7,14 @@
 
 use xilem::masonry::accesskit::{Node, Role};
 use xilem::masonry::core::{
-    AccessCtx, BoxConstraints, BrushIndex, EventCtx, LayoutCtx, NewWidget, PaintCtx, PointerEvent,
+    AccessCtx, BrushIndex, EventCtx, LayoutCtx, MeasureCtx, NewWidget, PaintCtx, PointerEvent,
     PropertiesMut, PropertiesRef, RegisterCtx, StyleProperty, Update, UpdateCtx, Widget, WidgetId,
     WidgetMut, WidgetPod, render_text,
 };
-use xilem::masonry::vello::Scene;
-use xilem::masonry::vello::kurbo::{Affine, Point, Rect, RoundedRect, Size, Stroke, Vec2};
-use xilem::masonry::vello::peniko::{Color, Fill};
+use xilem::masonry::imaging::Painter;
+use xilem::masonry::kurbo::{Affine, Axis, Point, Rect, RoundedRect, Size, Stroke, Vec2};
+use xilem::masonry::layout::LenReq;
+use xilem::masonry::peniko::{Color, Fill};
 
 use xilem::masonry::parley::Layout;
 use smallvec::SmallVec;
@@ -282,6 +283,20 @@ impl GroupBox {
         this.widget.border_color = border_from_tint(r, g, b);
         this.ctx.request_render();
     }
+
+    fn ensure_text_layout(
+        &mut self,
+        (font_ctx, layout_ctx): (&mut xilem::masonry::parley::FontContext, &mut xilem::masonry::parley::LayoutContext<BrushIndex>),
+    ) {
+        if self.needs_layout {
+            let mut builder = layout_ctx.ranged_builder(font_ctx, &self.label, 1.0, true);
+            builder.push_default(StyleProperty::FontSize(LABEL_FONT_SIZE));
+            builder.push_default(StyleProperty::Brush(BrushIndex(0)));
+            builder.build_into(&mut self.text_layout, &self.label);
+            self.text_layout.break_all_lines(None);
+            self.needs_layout = false;
+        }
+    }
 }
 
 impl Widget for GroupBox {
@@ -297,56 +312,61 @@ impl Widget for GroupBox {
 
     fn update(&mut self, _ctx: &mut UpdateCtx<'_>, _props: &mut PropertiesMut<'_>, _event: &Update) {}
 
-    fn layout(
-        &mut self, ctx: &mut LayoutCtx<'_>, _props: &mut PropertiesMut<'_>, bc: &BoxConstraints,
-    ) -> Size {
-        // Build label text layout
-        if self.needs_layout || ctx.fonts_changed() {
-            let (font_ctx, layout_ctx) = ctx.text_contexts();
-            let mut builder = layout_ctx.ranged_builder(font_ctx, &self.label, 1.0, true);
-            builder.push_default(StyleProperty::FontSize(LABEL_FONT_SIZE));
-            builder.push_default(StyleProperty::Brush(BrushIndex(0)));
-            builder.build_into(&mut self.text_layout, &self.label);
-            self.text_layout.break_all_lines(None);
-            self.needs_layout = false;
+    fn measure(
+        &mut self,
+        ctx: &mut MeasureCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        axis: Axis,
+        _len_req: LenReq,
+        cross_length: Option<f64>,
+    ) -> f64 {
+        // Ensure text layout
+        self.ensure_text_layout(ctx.text_contexts());
+
+        match axis {
+            Axis::Horizontal => {
+                let child_cross = cross_length.map(|c| (c - LABEL_HEIGHT - PADDING * 2.0).max(0.0));
+                let child_w = ctx.redirect_measurement(&mut self.child, axis, child_cross);
+                child_w + PADDING * 2.0
+            }
+            Axis::Vertical => {
+                let child_cross = cross_length.map(|c| (c - PADDING * 2.0).max(0.0));
+                let child_h = ctx.redirect_measurement(&mut self.child, axis, child_cross);
+                child_h + LABEL_HEIGHT + PADDING * 2.0
+            }
         }
-
-        let min_child_w = (bc.min().width - PADDING * 2.0).max(0.0);
-        let min_child_h = (bc.min().height - LABEL_HEIGHT - PADDING * 2.0).max(0.0);
-        let max_child_w = (bc.max().width - PADDING * 2.0).max(0.0);
-        let max_child_h = (bc.max().height - LABEL_HEIGHT - PADDING * 2.0).max(0.0);
-        let child_bc = BoxConstraints::new(
-            Size::new(min_child_w, min_child_h),
-            Size::new(max_child_w, max_child_h),
-        );
-        let child_size = ctx.run_layout(&mut self.child, &child_bc);
-        ctx.place_child(&mut self.child, Point::new(PADDING, LABEL_HEIGHT + PADDING));
-
-        let content_w = child_size.width.max(min_child_w) + PADDING * 2.0;
-        let content_h = child_size.height.max(min_child_h) + LABEL_HEIGHT + PADDING * 2.0;
-
-        // When fill is set, expand width to the maximum available space.
-        let w = if self.fill && bc.max().width.is_finite() { bc.max().width } else { content_w };
-        bc.constrain(Size::new(w, content_h))
     }
 
-    fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, scene: &mut Scene) {
-        let size = ctx.size();
+    fn layout(
+        &mut self, ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, size: Size,
+    ) {
+        // Build label text layout
+        self.ensure_text_layout(ctx.text_contexts());
+
+        let child_w = (size.width - PADDING * 2.0).max(0.0);
+        let child_h = (size.height - LABEL_HEIGHT - PADDING * 2.0).max(0.0);
+        let child_size = Size::new(child_w, child_h);
+        ctx.run_layout(&mut self.child, child_size);
+        ctx.place_child(&mut self.child, Point::new(PADDING, LABEL_HEIGHT + PADDING));
+    }
+
+    fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, painter: &mut Painter<'_>) {
+        let size = ctx.content_box_size();
         let rect = Rect::from_origin_size(Point::ZERO, size);
         let rr = RoundedRect::from_rect(rect, CORNER_RADIUS);
 
         // Background
-        scene.fill(Fill::NonZero, Affine::IDENTITY, self.bg_color, None, &rr);
+        painter.fill(rr, self.bg_color).fill_rule(Fill::NonZero).draw();
 
         // Subtle border
-        scene.stroke(&Stroke::new(BORDER_WIDTH), Affine::IDENTITY, self.border_color, None, &rr);
+        painter.stroke(rr, &Stroke::new(BORDER_WIDTH), self.border_color).draw();
 
         // Label text using inverse contrast color (always readable).
         let label_color = inverse_contrast_color(self.bg_color);
         let text_h = self.text_layout.height() as f64;
         let text_y = (LABEL_HEIGHT - text_h) / 2.0;
         render_text(
-            scene,
+            painter,
             Affine::translate(Vec2::new(PADDING, text_y)),
             &self.text_layout,
             &[label_color.into()],

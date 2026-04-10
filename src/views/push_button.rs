@@ -5,7 +5,7 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-use xilem::core::{MessageContext, Mut, View, ViewMarker};
+use xilem::core::{MessageCtx, Mut, View, ViewMarker};
 use xilem::core::MessageResult;
 use xilem::{Pod, ViewCtx};
 
@@ -15,7 +15,7 @@ use crate::widgets::push_button::PushButton as ButtonWidget;
 pub struct PushButton<F> {
     active: bool,
     on_toggle: F,
-    tint: Option<xilem::masonry::vello::peniko::Color>,
+    tint: Option<xilem::Color>,
 }
 
 /// Create a push button (boolean toggle).
@@ -27,7 +27,7 @@ pub fn push_button<State, Action>(
 }
 
 impl<F> PushButton<F> {
-    pub fn tint(mut self, color: xilem::masonry::vello::peniko::Color) -> Self {
+    pub fn tint(mut self, color: xilem::Color) -> Self {
         self.tint = Some(color);
         self
     }
@@ -62,11 +62,11 @@ where
     }
 
     fn teardown(&self, _: &mut (), ctx: &mut ViewCtx, element: Mut<'_, Self::Element>) {
-        ctx.teardown_leaf(element);
+        ctx.teardown_action_source(element);
     }
 
     fn message(
-        &self, _: &mut (), message: &mut MessageContext,
+        &self, _: &mut (), message: &mut MessageCtx,
         _: Mut<'_, Self::Element>, state: &mut State,
     ) -> MessageResult<Action> {
         if message.take_first().is_some() { return MessageResult::Stale; }

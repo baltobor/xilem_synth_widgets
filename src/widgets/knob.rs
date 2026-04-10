@@ -9,13 +9,14 @@ use std::f64::consts::PI;
 
 use xilem::masonry::accesskit::{Node, Role};
 use xilem::masonry::core::{
-    AccessCtx, BoxConstraints, EventCtx, LayoutCtx, PaintCtx, PointerButtonEvent, PointerEvent,
+    AccessCtx, EventCtx, LayoutCtx, MeasureCtx, PaintCtx, PointerButtonEvent, PointerEvent,
     PointerUpdate, PropertiesMut, PropertiesRef, RegisterCtx, Update, UpdateCtx, Widget, WidgetId,
     WidgetMut,
 };
-use xilem::masonry::vello::Scene;
-use xilem::masonry::vello::kurbo::{Affine, Arc, Cap, Circle, Line, Point, Size, Stroke, Vec2};
-use xilem::masonry::vello::peniko::{Color, Fill};
+use xilem::masonry::imaging::Painter;
+use xilem::masonry::kurbo::{Arc, Axis, Cap, Circle, Line, Point, Size, Stroke, Vec2};
+use xilem::masonry::layout::LenReq;
+use xilem::masonry::peniko::{Color, Fill};
 
 use smallvec::SmallVec;
 use tracing::trace_span;
@@ -167,13 +168,26 @@ impl Widget for Knob {
     fn register_children(&mut self, _ctx: &mut RegisterCtx<'_>) {}
     fn update(&mut self, _ctx: &mut UpdateCtx<'_>, _props: &mut PropertiesMut<'_>, _event: &Update) {}
 
-    fn layout(&mut self, _ctx: &mut LayoutCtx<'_>, _props: &mut PropertiesMut<'_>, bc: &BoxConstraints) -> Size {
+    fn measure(
+        &mut self,
+        _ctx: &mut MeasureCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        axis: Axis,
+        _len_req: LenReq,
+        _cross_length: Option<f64>,
+    ) -> f64 {
         let side = self.radius() * 2.0 + 4.0;
-        bc.constrain(Size::new(side, side))
+        match axis {
+            Axis::Horizontal => side,
+            Axis::Vertical => side,
+        }
     }
 
-    fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, scene: &mut Scene) {
-        let size = ctx.size();
+    fn layout(&mut self, _ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, _size: Size) {
+    }
+
+    fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, painter: &mut Painter<'_>) {
+        let size = ctx.content_box_size();
         let cx = size.width / 2.0;
         let cy = size.height / 2.0;
         let r = self.radius();
@@ -181,10 +195,7 @@ impl Widget for Knob {
 
         // Track arc
         let track_arc = Arc::new(Point::new(cx, cy), Vec2::new(r, r), ARC_START, ARC_SWEEP, 0.0);
-        scene.stroke(
-            &Stroke::new(ring_w).with_caps(Cap::Round),
-            Affine::IDENTITY, Color::from_rgb8(0x40, 0x40, 0x40), None, &track_arc,
-        );
+        painter.stroke(track_arc, &Stroke::new(ring_w).with_caps(Cap::Round), Color::from_rgb8(0x40, 0x40, 0x40)).draw();
 
         // Lit arc from default to current value
         let def_n = self.default_normalized();
@@ -193,10 +204,7 @@ impl Widget for Knob {
             let start = Self::angle_for_normalized(def_n.min(cur_n));
             let end = Self::angle_for_normalized(def_n.max(cur_n));
             let lit_arc = Arc::new(Point::new(cx, cy), Vec2::new(r, r), start, end - start, 0.0);
-            scene.stroke(
-                &Stroke::new(ring_w).with_caps(Cap::Round),
-                Affine::IDENTITY, self.tint, None, &lit_arc,
-            );
+            painter.stroke(lit_arc, &Stroke::new(ring_w).with_caps(Cap::Round), self.tint).draw();
         }
 
         // Body
@@ -209,8 +217,8 @@ impl Widget for Knob {
         } else {
             Color::from_rgb8(0x50, 0x50, 0x50)
         };
-        scene.fill(Fill::NonZero, Affine::IDENTITY, body_color, None, &body);
-        scene.stroke(&Stroke::new(1.0), Affine::IDENTITY, Color::from_rgb8(0x80, 0x80, 0x80), None, &body);
+        painter.fill(body, body_color).fill_rule(Fill::NonZero).draw();
+        painter.stroke(body, &Stroke::new(1.0), Color::from_rgb8(0x80, 0x80, 0x80)).draw();
 
         // Indicator line
         let angle = Self::angle_for_normalized(cur_n);
@@ -219,10 +227,7 @@ impl Widget for Knob {
         let dir = Vec2::from_angle(angle);
         let p0 = Point::new(cx + dir.x * inner_r, cy + dir.y * inner_r);
         let p1 = Point::new(cx + dir.x * outer_r, cy + dir.y * outer_r);
-        scene.stroke(
-            &Stroke::new(self.indicator_w()).with_caps(Cap::Round),
-            Affine::IDENTITY, Color::WHITE, None, &Line::new(p0, p1),
-        );
+        painter.stroke(Line::new(p0, p1), &Stroke::new(self.indicator_w()).with_caps(Cap::Round), Color::WHITE).draw();
     }
 
     fn accessibility_role(&self) -> Role { Role::Slider }

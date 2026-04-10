@@ -9,14 +9,15 @@ use std::sync::{Arc, Mutex};
 
 use xilem::masonry::accesskit::{Node, Role};
 use xilem::masonry::core::{
-    AccessCtx, BoxConstraints, EventCtx, LayoutCtx, PaintCtx, PointerEvent, PropertiesMut,
+    AccessCtx, EventCtx, LayoutCtx, MeasureCtx, PaintCtx, PointerEvent, PropertiesMut,
     PropertiesRef, RegisterCtx, Update, UpdateCtx, Widget, WidgetId, WidgetMut,
 };
-use xilem::masonry::vello::Scene;
-use xilem::masonry::vello::kurbo::{
-    Affine, BezPath, Cap, Line, Point, Rect, RoundedRect, Size, Stroke,
+use xilem::masonry::imaging::Painter;
+use xilem::masonry::kurbo::{
+    Axis, BezPath, Cap, Line, Point, Rect, RoundedRect, Size, Stroke,
 };
-use xilem::masonry::vello::peniko::{Color, Fill};
+use xilem::masonry::layout::LenReq;
+use xilem::masonry::peniko::{Color, Fill};
 
 use smallvec::SmallVec;
 use tracing::trace_span;
@@ -314,22 +315,35 @@ impl Widget for Scope {
         }
     }
 
+    fn measure(
+        &mut self,
+        _ctx: &mut MeasureCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        axis: Axis,
+        _len_req: LenReq,
+        _cross_length: Option<f64>,
+    ) -> f64 {
+        match axis {
+            Axis::Horizontal => SCOPE_WIDTH,
+            Axis::Vertical => SCOPE_HEIGHT,
+        }
+    }
+
     fn layout(
         &mut self,
         _ctx: &mut LayoutCtx<'_>,
-        _props: &mut PropertiesMut<'_>,
-        bc: &BoxConstraints,
-    ) -> Size {
-        bc.constrain(Size::new(SCOPE_WIDTH, SCOPE_HEIGHT))
+        _props: &PropertiesRef<'_>,
+        _size: Size,
+    ) {
     }
 
-    fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, scene: &mut Scene) {
-        let size = ctx.size();
+    fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, painter: &mut Painter<'_>) {
+        let size = ctx.content_box_size();
         let rect = Rect::from_origin_size(Point::ZERO, size);
         let rr = RoundedRect::from_rect(rect, BORDER_RADIUS);
 
         // Background
-        scene.fill(Fill::NonZero, Affine::IDENTITY, self.bg_color, None, &rr);
+        painter.fill(rr, self.bg_color).fill_rule(Fill::NonZero).draw();
 
         let draw_x = PADDING;
         let draw_y = PADDING;
@@ -340,43 +354,31 @@ impl Widget for Scope {
         // Grid lines
         let grid_stroke = Stroke::new(0.5);
         // Horizontal center line
-        scene.stroke(
-            &grid_stroke,
-            Affine::IDENTITY,
-            self.grid_color,
-            None,
-            &Line::new(Point::new(draw_x, mid_y), Point::new(draw_x + draw_w, mid_y)),
-        );
+        painter.stroke(
+            Line::new(Point::new(draw_x, mid_y), Point::new(draw_x + draw_w, mid_y)),
+            &grid_stroke, self.grid_color,
+        ).draw();
         // Quarter lines
         for frac in [0.25, 0.75] {
             let y = draw_y + draw_h * frac;
-            scene.stroke(
-                &grid_stroke,
-                Affine::IDENTITY,
-                self.grid_color,
-                None,
-                &Line::new(Point::new(draw_x, y), Point::new(draw_x + draw_w, y)),
-            );
+            painter.stroke(
+                Line::new(Point::new(draw_x, y), Point::new(draw_x + draw_w, y)),
+                &grid_stroke, self.grid_color,
+            ).draw();
         }
         // Vertical center
         let mid_x = draw_x + draw_w / 2.0;
-        scene.stroke(
-            &grid_stroke,
-            Affine::IDENTITY,
-            self.grid_color,
-            None,
-            &Line::new(Point::new(mid_x, draw_y), Point::new(mid_x, draw_y + draw_h)),
-        );
+        painter.stroke(
+            Line::new(Point::new(mid_x, draw_y), Point::new(mid_x, draw_y + draw_h)),
+            &grid_stroke, self.grid_color,
+        ).draw();
         // Vertical quarters
         for frac in [0.25, 0.75] {
             let x = draw_x + draw_w * frac;
-            scene.stroke(
-                &grid_stroke,
-                Affine::IDENTITY,
-                self.grid_color,
-                None,
-                &Line::new(Point::new(x, draw_y), Point::new(x, draw_y + draw_h)),
-            );
+            painter.stroke(
+                Line::new(Point::new(x, draw_y), Point::new(x, draw_y + draw_h)),
+                &grid_stroke, self.grid_color,
+            ).draw();
         }
 
         // Waveform
@@ -397,23 +399,15 @@ impl Widget for Scope {
                 }
             }
 
-            scene.stroke(
-                &Stroke::new(1.5).with_caps(Cap::Round),
-                Affine::IDENTITY,
-                self.wave_color,
-                None,
+            painter.stroke(
                 &path,
-            );
+                &Stroke::new(1.5).with_caps(Cap::Round),
+                self.wave_color,
+            ).draw();
         }
 
         // Border
-        scene.stroke(
-            &Stroke::new(0.5),
-            Affine::IDENTITY,
-            Color::from_rgb8(0x40, 0x40, 0x40),
-            None,
-            &rr,
-        );
+        painter.stroke(rr, &Stroke::new(0.5), Color::from_rgb8(0x40, 0x40, 0x40)).draw();
     }
 
     fn accessibility_role(&self) -> Role {

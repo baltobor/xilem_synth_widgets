@@ -5,7 +5,7 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-use xilem::core::{MessageContext, Mut, View, ViewMarker, ViewId, ViewPathTracker};
+use xilem::core::{MessageCtx, Mut, View, ViewMarker, ViewId, ViewPathTracker};
 use xilem::core::MessageResult;
 use xilem::{Pod, ViewCtx, WidgetView};
 
@@ -17,13 +17,13 @@ const CHILD_VIEW_ID: ViewId = ViewId::new(0);
 pub struct GroupBox<V> {
     label: String,
     child: V,
-    bg_color: Option<xilem::masonry::vello::peniko::Color>,
-    tint: Option<xilem::masonry::vello::peniko::Color>,
+    bg_color: Option<xilem::Color>,
+    tint: Option<xilem::Color>,
     fill: bool,
 }
 
 /// Create a group box with a label and child content.
-pub fn group_box<State, Action, V: WidgetView<State, Action>>(
+pub fn group_box<State: 'static, Action, V: WidgetView<State, Action>>(
     label: impl Into<String>,
     child: V,
 ) -> GroupBox<V> {
@@ -37,12 +37,12 @@ pub fn group_box<State, Action, V: WidgetView<State, Action>>(
 }
 
 impl<V> GroupBox<V> {
-    pub fn bg_color(mut self, color: xilem::masonry::vello::peniko::Color) -> Self {
+    pub fn bg_color(mut self, color: xilem::Color) -> Self {
         self.bg_color = Some(color);
         self
     }
 
-    pub fn tint(mut self, color: xilem::masonry::vello::peniko::Color) -> Self {
+    pub fn tint(mut self, color: xilem::Color) -> Self {
         self.tint = Some(color);
         self
     }
@@ -124,13 +124,12 @@ where
                 GroupBoxWidget::child_mut(&mut element).downcast(),
             );
         });
-        ctx.teardown_leaf(element);
     }
 
     fn message(
         &self,
         view_state: &mut Self::ViewState,
-        message: &mut MessageContext,
+        message: &mut MessageCtx,
         mut element: Mut<'_, Self::Element>,
         app_state: &mut State,
     ) -> MessageResult<Action> {

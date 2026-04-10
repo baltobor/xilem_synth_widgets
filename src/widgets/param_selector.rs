@@ -7,13 +7,14 @@
 
 use xilem::masonry::accesskit::{Node, Role};
 use xilem::masonry::core::{
-    AccessCtx, BoxConstraints, BrushIndex, EventCtx, LayoutCtx, PaintCtx, PointerButtonEvent,
+    AccessCtx, BrushIndex, EventCtx, LayoutCtx, MeasureCtx, PaintCtx, PointerButtonEvent,
     PointerEvent, PropertiesMut, PropertiesRef, RegisterCtx, StyleProperty, Update, UpdateCtx,
     Widget, WidgetId, WidgetMut, render_text,
 };
-use xilem::masonry::vello::Scene;
-use xilem::masonry::vello::kurbo::{Affine, Circle, Point, Rect, RoundedRect, Size, Stroke, Vec2};
-use xilem::masonry::vello::peniko::{Color, Fill};
+use xilem::masonry::imaging::Painter;
+use xilem::masonry::kurbo::{Affine, Axis, Circle, Point, Rect, RoundedRect, Size, Stroke, Vec2};
+use xilem::masonry::layout::LenReq;
+use xilem::masonry::peniko::{Color, Fill};
 
 use xilem::masonry::parley::Layout;
 use smallvec::SmallVec;
@@ -116,6 +117,23 @@ impl ParamSelector {
     fn dot_col_w() -> f64 {
         DOT_RADIUS * 2.0 + DOT_MARGIN * 2.0
     }
+
+    fn ensure_text_layouts(
+        &mut self,
+        (font_ctx, layout_ctx): (&mut xilem::masonry::parley::FontContext, &mut xilem::masonry::parley::LayoutContext<BrushIndex>),
+    ) {
+        if self.needs_layout || self.text_layouts.len() != self.labels.len() {
+            self.text_layouts.clear();
+            for label in &self.labels {
+                let mut builder = layout_ctx.ranged_builder(font_ctx, label, 1.0, true);
+                builder.push_default(StyleProperty::FontSize(FONT_SIZE));
+                let mut layout = builder.build(label);
+                layout.break_all_lines(None);
+                self.text_layouts.push(layout);
+            }
+            self.needs_layout = false;
+        }
+    }
 }
 
 impl Widget for ParamSelector {
@@ -127,7 +145,7 @@ impl Widget for ParamSelector {
         if ctx.is_disabled() { return; }
         if let PointerEvent::Up(PointerButtonEvent { state, .. }) = event {
             let pos = ctx.local_position(state.position);
-            if let Some(idx) = self.hit_test(pos, ctx.size()) {
+            if let Some(idx) = self.hit_test(pos, ctx.content_box_size()) {
                 if self.selected != idx {
                     self.selected = idx;
                     ctx.submit_action::<usize>(idx);
@@ -141,35 +159,38 @@ impl Widget for ParamSelector {
     fn register_children(&mut self, _ctx: &mut RegisterCtx<'_>) {}
     fn update(&mut self, _ctx: &mut UpdateCtx<'_>, _props: &mut PropertiesMut<'_>, _event: &Update) {}
 
-    fn layout(
-        &mut self, ctx: &mut LayoutCtx<'_>, _props: &mut PropertiesMut<'_>, bc: &BoxConstraints,
-    ) -> Size {
-        // Build text layouts for each label
-        if self.needs_layout || ctx.fonts_changed() {
-            let (font_ctx, layout_ctx) = ctx.text_contexts();
-            self.text_layouts.clear();
-            for label in &self.labels {
-                let mut builder = layout_ctx.ranged_builder(font_ctx, label, 1.0, true);
-                builder.push_default(StyleProperty::FontSize(FONT_SIZE));
-                let mut layout = builder.build(label);
-                layout.break_all_lines(None);
-                self.text_layouts.push(layout);
-            }
-            self.needs_layout = false;
-        }
+    fn measure(
+        &mut self,
+        ctx: &mut MeasureCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        axis: Axis,
+        _len_req: LenReq,
+        _cross_length: Option<f64>,
+    ) -> f64 {
+        // Build text layouts if needed
+        self.ensure_text_layouts(ctx.text_contexts());
 
-        // Compute width from actual text widths
-        let dot_col_w = Self::dot_col_w();
-        let max_text_w = self.text_layouts.iter()
-            .map(|l| l.width() as f64)
-            .fold(0.0_f64, f64::max);
-        let w = max_text_w + dot_col_w + LABEL_GAP;
-        let h = self.count as f64 * ROW_HEIGHT;
-        bc.constrain(Size::new(w, h))
+        match axis {
+            Axis::Horizontal => {
+                let dot_col_w = Self::dot_col_w();
+                let max_text_w = self.text_layouts.iter()
+                    .map(|l| l.width() as f64)
+                    .fold(0.0_f64, f64::max);
+                max_text_w + dot_col_w + LABEL_GAP
+            }
+            Axis::Vertical => self.count as f64 * ROW_HEIGHT,
+        }
     }
 
-    fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, scene: &mut Scene) {
-        let size = ctx.size();
+    fn layout(
+        &mut self, ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, _size: Size,
+    ) {
+        // Build text layouts for each label
+        self.ensure_text_layouts(ctx.text_contexts());
+    }
+
+    fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, painter: &mut Painter<'_>) {
+        let size = ctx.content_box_size();
         let dot_col_w = Self::dot_col_w();
 
         // Capsule frame centered on dot column
@@ -184,8 +205,8 @@ impl Widget for ParamSelector {
             dot_center_x + frame_w / 2.0, size.height - frame_pad,
         );
         let frame_rr = RoundedRect::from_rect(frame_rect, frame_w / 2.0);
-        scene.fill(Fill::NonZero, Affine::IDENTITY, Color::from_rgb8(0x2A, 0x2A, 0x2A), None, &frame_rr);
-        scene.stroke(&Stroke::new(1.0), Affine::IDENTITY, Color::from_rgb8(0x55, 0x55, 0x55), None, &frame_rr);
+        painter.fill(frame_rr, Color::from_rgb8(0x2A, 0x2A, 0x2A)).fill_rule(Fill::NonZero).draw();
+        painter.stroke(frame_rr, &Stroke::new(1.0), Color::from_rgb8(0x55, 0x55, 0x55)).draw();
 
         for i in 0..self.count {
             let (y0, _) = self.row_rect(i, size);
@@ -198,7 +219,7 @@ impl Widget for ParamSelector {
             let center = Point::new(dot_x, cy);
             if is_selected {
                 let dot = Circle::new(center, DOT_RADIUS + 1.5);
-                scene.fill(Fill::NonZero, Affine::IDENTITY, self.tint, None, &dot);
+                painter.fill(dot, self.tint).fill_rule(Fill::NonZero).draw();
             }
 
             // Text label via parley layout
@@ -219,7 +240,7 @@ impl Widget for ParamSelector {
                 let text_y = cy - text_h / 2.0;
 
                 render_text(
-                    scene,
+                    painter,
                     Affine::translate(Vec2::new(text_x, text_y)),
                     layout,
                     &[text_color.into()],

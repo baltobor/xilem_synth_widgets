@@ -7,7 +7,7 @@ license = "Apache-2.0"
 description = "Synth-style UI widgets for Xilem: knobs, faders, scopes, selectors, and more"
 
 [dependencies]
-xilem = "0.4"
+xilem = { git = "https://github.com/linebender/xilem", branch = "main" }
 tracing = "0.1"
 smallvec = "1"
 triple_buffer = "8"
