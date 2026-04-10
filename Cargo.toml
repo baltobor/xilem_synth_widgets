@@ -1,6 +1,6 @@
 [package]
 name = "xilem_synth_widgets"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = ["Jacek Wisniowski"]
 license = "Apache-2.0"
