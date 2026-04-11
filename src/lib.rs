@@ -5,7 +5,7 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-mod widgets;
+pub mod widgets;
 mod views;
 pub mod theme;
 
