@@ -15,5 +15,8 @@ pub use views::knob::knob;
 pub use views::param_selector::{param_selector, LabelAlign};
 pub use views::push_button::push_button;
 pub use views::scope::{scope, ScopeBuffer, ScopeSource};
+pub use views::led::led;
+pub use views::level_meter::level_meter;
+pub use widgets::level_meter::Orientation;
 
 pub use xilem;

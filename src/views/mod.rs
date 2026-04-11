@@ -11,3 +11,5 @@ pub mod knob;
 pub mod param_selector;
 pub mod push_button;
 pub mod scope;
+pub mod led;
+pub mod level_meter;
