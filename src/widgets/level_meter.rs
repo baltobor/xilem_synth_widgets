@@ -27,6 +27,20 @@ pub enum Orientation {
     Vertical,
 }
 
+/// Visual style for the level meter bar.
+#[derive(Clone, Copy, PartialEq)]
+pub enum MeterStyle {
+    /// Three-zone gradient: green (low), orange (mid), red (high).
+    /// Thresholds are based on dB mapping within the value range.
+    Gradient,
+    /// Single solid color for the entire filled portion.
+    Tint(Color),
+}
+
+impl Default for MeterStyle {
+    fn default() -> Self { MeterStyle::Gradient }
+}
+
 const METER_WIDTH: f64 = 120.0;
 const METER_HEIGHT: f64 = 6.0;
 const BG_COLOR: Color = Color::from_rgb8(0x20, 0x20, 0x20);
@@ -34,13 +48,13 @@ const GREEN: Color = Color::from_rgb8(0x30, 0xC0, 0x30);
 const ORANGE: Color = Color::from_rgb8(0xFF, 0x8C, 0x00);
 const RED: Color = Color::from_rgb8(0xE0, 0x20, 0x20);
 
-/// A three-zone power bar / level meter.
+/// A power bar / level meter.
 ///
 /// Shows a colored bar proportional to the value within min..max range.
-/// Three color zones:
-/// - Green: below -12 dB (normalized < 0.73)
-/// - Orange: -12 dB to 0 dB (0.73 to 0.91)
-/// - Red: above 0 dB (> 0.91)
+///
+/// Two styles:
+/// - `Gradient` (default): three-zone coloring — green, orange, red
+/// - `Tint(color)`: single solid color for the entire bar
 ///
 /// Can be horizontal (for transport bar) or vertical (for channel strips).
 pub struct LevelMeter {
@@ -48,22 +62,36 @@ pub struct LevelMeter {
     min: f64,
     max: f64,
     orientation: Orientation,
-    tint: Option<Color>,
+    style: MeterStyle,
 }
 
 impl LevelMeter {
     pub fn new(value: f64, min: f64, max: f64, orientation: Orientation) -> Self {
-        Self { value, min, max, orientation, tint: None }
+        Self { value, min, max, orientation, style: MeterStyle::Gradient }
     }
 
+    /// Set the visual style (gradient or tint).
+    pub fn with_style(mut self, style: MeterStyle) -> Self {
+        self.style = style;
+        self
+    }
+
+    /// Convenience: set a single solid tint color.
     pub fn with_tint(mut self, color: Color) -> Self {
-        self.tint = Some(color);
+        self.style = MeterStyle::Tint(color);
         self
     }
 
     pub fn set_value(this: &mut WidgetMut<'_, Self>, value: f64) {
         if (this.widget.value - value).abs() > 0.001 {
             this.widget.value = value;
+            this.ctx.request_render();
+        }
+    }
+
+    pub fn set_style(this: &mut WidgetMut<'_, Self>, style: MeterStyle) {
+        if this.widget.style != style {
+            this.widget.style = style;
             this.ctx.request_render();
         }
     }
@@ -122,64 +150,68 @@ impl Widget for LevelMeter {
         match self.orientation {
             Orientation::Horizontal => {
                 let fill_w = norm * size.width;
-                let thresh_x = threshold_norm * size.width;
-                let zero_x = zero_norm * size.width;
 
-                if let Some(tint) = self.tint {
-                    // Single color mode
-                    let r = Rect::new(0.0, 0.0, fill_w, size.height);
-                    painter.fill(&r, tint).fill_rule(Fill::NonZero).draw();
-                } else {
-                    // Green zone
-                    let green_right = fill_w.min(thresh_x);
-                    if green_right > 0.0 {
-                        let r = Rect::new(0.0, 0.0, green_right, size.height);
-                        painter.fill(&r, GREEN).fill_rule(Fill::NonZero).draw();
+                match self.style {
+                    MeterStyle::Tint(color) => {
+                        let r = Rect::new(0.0, 0.0, fill_w, size.height);
+                        painter.fill(&r, color).fill_rule(Fill::NonZero).draw();
                     }
-                    // Orange zone
-                    if fill_w > thresh_x {
-                        let orange_right = fill_w.min(zero_x);
-                        if orange_right > thresh_x {
-                            let r = Rect::new(thresh_x, 0.0, orange_right, size.height);
-                            painter.fill(&r, ORANGE).fill_rule(Fill::NonZero).draw();
+                    MeterStyle::Gradient => {
+                        let thresh_x = threshold_norm * size.width;
+                        let zero_x = zero_norm * size.width;
+                        // Green zone
+                        let green_right = fill_w.min(thresh_x);
+                        if green_right > 0.0 {
+                            let r = Rect::new(0.0, 0.0, green_right, size.height);
+                            painter.fill(&r, GREEN).fill_rule(Fill::NonZero).draw();
                         }
-                    }
-                    // Red zone
-                    if fill_w > zero_x {
-                        let r = Rect::new(zero_x, 0.0, fill_w, size.height);
-                        painter.fill(&r, RED).fill_rule(Fill::NonZero).draw();
+                        // Orange zone
+                        if fill_w > thresh_x {
+                            let orange_right = fill_w.min(zero_x);
+                            if orange_right > thresh_x {
+                                let r = Rect::new(thresh_x, 0.0, orange_right, size.height);
+                                painter.fill(&r, ORANGE).fill_rule(Fill::NonZero).draw();
+                            }
+                        }
+                        // Red zone
+                        if fill_w > zero_x {
+                            let r = Rect::new(zero_x, 0.0, fill_w, size.height);
+                            painter.fill(&r, RED).fill_rule(Fill::NonZero).draw();
+                        }
                     }
                 }
             }
             Orientation::Vertical => {
-                // Vertical: fill from bottom up
                 let fill_h = norm * size.height;
-                let thresh_y = size.height - threshold_norm * size.height;
-                let zero_y = size.height - zero_norm * size.height;
                 let top = size.height - fill_h;
 
-                if let Some(tint) = self.tint {
-                    let r = Rect::new(0.0, top, size.width, size.height);
-                    painter.fill(&r, tint).fill_rule(Fill::NonZero).draw();
-                } else {
-                    // Green zone (bottom)
-                    let green_top = top.max(thresh_y);
-                    if green_top < size.height {
-                        let r = Rect::new(0.0, green_top, size.width, size.height);
-                        painter.fill(&r, GREEN).fill_rule(Fill::NonZero).draw();
+                match self.style {
+                    MeterStyle::Tint(color) => {
+                        let r = Rect::new(0.0, top, size.width, size.height);
+                        painter.fill(&r, color).fill_rule(Fill::NonZero).draw();
                     }
-                    // Orange zone
-                    if top < thresh_y {
-                        let orange_top = top.max(zero_y);
-                        if orange_top < thresh_y {
-                            let r = Rect::new(0.0, orange_top, size.width, thresh_y);
-                            painter.fill(&r, ORANGE).fill_rule(Fill::NonZero).draw();
+                    MeterStyle::Gradient => {
+                        let thresh_y = size.height - threshold_norm * size.height;
+                        let zero_y = size.height - zero_norm * size.height;
+                        // Green zone (bottom)
+                        let green_top = top.max(thresh_y);
+                        if green_top < size.height {
+                            let r = Rect::new(0.0, green_top, size.width, size.height);
+                            painter.fill(&r, GREEN).fill_rule(Fill::NonZero).draw();
                         }
-                    }
-                    // Red zone (top)
-                    if top < zero_y {
-                        let r = Rect::new(0.0, top, size.width, zero_y);
-                        painter.fill(&r, RED).fill_rule(Fill::NonZero).draw();
+                        // Orange zone
+                        if top < thresh_y {
+                            let orange_top = top.max(zero_y);
+                            if orange_top < thresh_y {
+                                let r = Rect::new(0.0, orange_top, size.width, thresh_y);
+                                painter.fill(&r, ORANGE).fill_rule(Fill::NonZero).draw();
+                            }
+                        }
+                        // Red zone (top)
+                        if top < zero_y {
+                            let r = Rect::new(0.0, top, size.width, zero_y);
+                            painter.fill(&r, RED).fill_rule(Fill::NonZero).draw();
+                        }
                     }
                 }
             }
@@ -192,6 +224,7 @@ impl Widget for LevelMeter {
         node.set_min_numeric_value(self.min);
         node.set_max_numeric_value(self.max);
     }
+
     fn children_ids(&self) -> SmallVec<[WidgetId; 16]> { SmallVec::new() }
 
     fn make_trace_span(&self, id: WidgetId) -> tracing::Span {

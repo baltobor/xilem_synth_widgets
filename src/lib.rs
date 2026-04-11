@@ -17,6 +17,6 @@ pub use views::push_button::push_button;
 pub use views::scope::{scope, ScopeBuffer, ScopeSource};
 pub use views::led::led;
 pub use views::level_meter::level_meter;
-pub use widgets::level_meter::Orientation;
+pub use widgets::level_meter::{MeterStyle, Orientation};
 
 pub use xilem;
