@@ -18,3 +18,7 @@ cpal = "0.16"
 [[example]]
 name = "demo"
 path = "examples/demo.rs"
+
+[[example]]
+name = "gallery"
+path = "examples/gallery.rs"

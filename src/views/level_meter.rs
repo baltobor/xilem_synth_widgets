@@ -7,7 +7,7 @@
 
 use xilem::core::{MessageCtx, Mut, View, ViewMarker};
 use xilem::core::MessageResult;
-use xilem::{Color, Pod, ViewCtx};
+use xilem::{Pod, ViewCtx};
 
 use crate::widgets::level_meter::{LevelMeter as LevelMeterWidget, MeterStyle, Orientation};
 
@@ -44,9 +44,9 @@ impl LevelMeter {
         self
     }
 
-    /// Convenience: override with a single solid tint color.
-    pub fn tint(mut self, color: Color) -> Self {
-        self.style = MeterStyle::Tint(color);
+    /// Set tint mode: single solid color that transitions green → orange → red.
+    pub fn tint(mut self) -> Self {
+        self.style = MeterStyle::Tint;
         self
     }
 }
