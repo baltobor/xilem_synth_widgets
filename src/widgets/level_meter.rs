@@ -39,6 +39,18 @@ pub enum MeterStyle {
     Tint,
 }
 
+/// Scale mode for threshold computation.
+#[derive(Clone, Copy, PartialEq, Default)]
+pub enum MeterScale {
+    /// dB scale: thresholds at -12 dB (orange) and 0 dB (red).
+    /// Use with dB ranges like -60..+6.
+    #[default]
+    Db,
+    /// Linear scale: thresholds at 75% (orange) and 90% (red).
+    /// Use with normalized ranges like 0..1.
+    Linear,
+}
+
 const METER_WIDTH: f64 = 120.0;
 const METER_HEIGHT: f64 = 6.0;
 const BG_COLOR: Color = Color::from_rgb8(0x20, 0x20, 0x20);
@@ -61,11 +73,12 @@ pub struct LevelMeter {
     max: f64,
     orientation: Orientation,
     style: MeterStyle,
+    scale: MeterScale,
 }
 
 impl LevelMeter {
     pub fn new(value: f64, min: f64, max: f64, orientation: Orientation) -> Self {
-        Self { value, min, max, orientation, style: MeterStyle::Gradient }
+        Self { value, min, max, orientation, style: MeterStyle::Gradient, scale: MeterScale::Db }
     }
 
     /// Set the visual style (gradient or tint).
@@ -77,6 +90,12 @@ impl LevelMeter {
     /// Convenience: set tint mode.
     pub fn with_tint(mut self) -> Self {
         self.style = MeterStyle::Tint;
+        self
+    }
+
+    /// Set the scale mode (dB or linear).
+    pub fn with_scale(mut self, scale: MeterScale) -> Self {
+        self.scale = scale;
         self
     }
 
@@ -94,6 +113,13 @@ impl LevelMeter {
         }
     }
 
+    pub fn set_scale(this: &mut WidgetMut<'_, Self>, scale: MeterScale) {
+        if this.widget.scale != scale {
+            this.widget.scale = scale;
+            this.ctx.request_render();
+        }
+    }
+
     pub fn set_range(this: &mut WidgetMut<'_, Self>, min: f64, max: f64) {
         this.widget.min = min;
         this.widget.max = max;
@@ -101,16 +127,13 @@ impl LevelMeter {
     }
 
     /// Smoothly interpolate between green → orange → red based on fill level.
-    fn interpolate_color(norm: f64, threshold_norm: f64, zero_norm: f64) -> Color {
-        if norm <= threshold_norm {
-            // Below threshold: green → orange
-            let t = if threshold_norm > 0.0 { norm / threshold_norm } else { 0.0 };
+    fn interpolate_color(norm: f64, threshold: f64, zero: f64) -> Color {
+        if norm <= threshold {
+            let t = if threshold > 0.0 { norm / threshold } else { 0.0 };
             Self::lerp_color(GREEN, ORANGE, t)
-        } else if norm <= zero_norm {
-            // Between threshold and zero: orange → red
-            let t = if zero_norm > threshold_norm {
-                (norm - threshold_norm) / (zero_norm - threshold_norm)
-            } else { 1.0 };
+        } else if norm <= zero {
+            let range = zero - threshold;
+            let t = if range > 0.0 { (norm - threshold) / range } else { 1.0 };
             Self::lerp_color(ORANGE, RED, t)
         } else {
             RED
@@ -168,10 +191,17 @@ impl Widget for LevelMeter {
 
         if norm < 0.001 { return; }
 
-        // Thresholds for three-zone coloring (dB-based when min=-60, max=6)
-        let range = self.max - self.min;
-        let threshold_norm = ((-12.0 - self.min) / range).clamp(0.0, 1.0);
-        let zero_norm = ((0.0 - self.min) / range).clamp(0.0, 1.0);
+        // Compute thresholds based on scale mode
+        let (threshold_norm, zero_norm) = match self.scale {
+            MeterScale::Db => {
+                let range = self.max - self.min;
+                (
+                    ((-12.0 - self.min) / range).clamp(0.0, 1.0),
+                    ((0.0 - self.min) / range).clamp(0.0, 1.0),
+                )
+            }
+            MeterScale::Linear => (0.75, 0.90),
+        };
 
         // For Tint mode: compute a single interpolated color based on fill level
         let tint_color = if self.style == MeterStyle::Tint {
