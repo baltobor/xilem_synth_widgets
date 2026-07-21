@@ -12,7 +12,7 @@ use xilem::masonry::core::{
 };
 use xilem::masonry::imaging::Painter;
 use xilem::masonry::kurbo::{Axis, Circle, Point, Size, Stroke};
-use xilem::masonry::layout::LenReq;
+use xilem::masonry::layout::{LenReq, Length};
 use xilem::masonry::peniko::{Color, Fill};
 
 use smallvec::SmallVec;
@@ -100,9 +100,9 @@ impl Widget for PushButton {
         _props: &PropertiesRef<'_>,
         _axis: Axis,
         _len_req: LenReq,
-        _cross_length: Option<f64>,
-    ) -> f64 {
-        BUTTON_RADIUS * 2.0 + 4.0
+        _cross_length: Option<Length>,
+    ) -> Length {
+        Length::px(BUTTON_RADIUS * 2.0 + 4.0)
     }
 
     fn layout(
@@ -114,7 +114,7 @@ impl Widget for PushButton {
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, painter: &mut Painter<'_>) {
-        let size = ctx.content_box_size();
+        let size = ctx.content_box().size();
         let cx = size.width / 2.0;
         let cy = size.height / 2.0;
 

@@ -13,7 +13,7 @@ use xilem::masonry::core::{
 };
 use xilem::masonry::imaging::Painter;
 use xilem::masonry::kurbo::{Affine, Axis, Circle, Point, Rect, RoundedRect, Size, Stroke, Vec2};
-use xilem::masonry::layout::LenReq;
+use xilem::masonry::layout::{LenReq, Length};
 use xilem::masonry::peniko::{Color, Fill};
 
 use xilem::masonry::parley::Layout;
@@ -145,7 +145,7 @@ impl Widget for ParamSelector {
         if ctx.is_disabled() { return; }
         if let PointerEvent::Up(PointerButtonEvent { state, .. }) = event {
             let pos = ctx.local_position(state.position);
-            if let Some(idx) = self.hit_test(pos, ctx.content_box_size()) {
+            if let Some(idx) = self.hit_test(pos, ctx.content_box().size()) {
                 if self.selected != idx {
                     self.selected = idx;
                     ctx.submit_action::<usize>(idx);
@@ -165,8 +165,8 @@ impl Widget for ParamSelector {
         _props: &PropertiesRef<'_>,
         axis: Axis,
         _len_req: LenReq,
-        _cross_length: Option<f64>,
-    ) -> f64 {
+        _cross_length: Option<Length>,
+    ) -> Length {
         // Build text layouts if needed
         self.ensure_text_layouts(ctx.text_contexts());
 
@@ -176,9 +176,9 @@ impl Widget for ParamSelector {
                 let max_text_w = self.text_layouts.iter()
                     .map(|l| l.width() as f64)
                     .fold(0.0_f64, f64::max);
-                max_text_w + dot_col_w + LABEL_GAP
+                Length::px(max_text_w + dot_col_w + LABEL_GAP)
             }
-            Axis::Vertical => self.count as f64 * ROW_HEIGHT,
+            Axis::Vertical => Length::px(self.count as f64 * ROW_HEIGHT),
         }
     }
 
@@ -190,7 +190,7 @@ impl Widget for ParamSelector {
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, painter: &mut Painter<'_>) {
-        let size = ctx.content_box_size();
+        let size = ctx.content_box().size();
         let dot_col_w = Self::dot_col_w();
 
         // Capsule frame centered on dot column

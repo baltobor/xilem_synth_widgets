@@ -13,7 +13,7 @@ use xilem::masonry::core::{
 };
 use xilem::masonry::imaging::Painter;
 use xilem::masonry::kurbo::{Axis, Circle, Point, Size};
-use xilem::masonry::layout::LenReq;
+use xilem::masonry::layout::{LenReq, Length};
 use xilem::masonry::peniko::Fill;
 use xilem::Color;
 
@@ -73,15 +73,15 @@ impl Widget for Led {
 
     fn measure(
         &mut self, _: &mut MeasureCtx<'_>, _: &PropertiesRef<'_>,
-        _axis: Axis, _: LenReq, _: Option<f64>,
-    ) -> f64 {
-        LED_SIZE
+        _axis: Axis, _: LenReq, _: Option<Length>,
+    ) -> Length {
+        Length::px(LED_SIZE)
     }
 
     fn layout(&mut self, _: &mut LayoutCtx<'_>, _: &PropertiesRef<'_>, _size: Size) {}
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _: &PropertiesRef<'_>, painter: &mut Painter<'_>) {
-        let size = ctx.content_box_size();
+        let size = ctx.content_box().size();
         let cx = size.width / 2.0;
         let cy = size.height / 2.0;
         let r = LED_RADIUS;

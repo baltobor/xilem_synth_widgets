@@ -16,7 +16,7 @@ use xilem::masonry::imaging::Painter;
 use xilem::masonry::kurbo::{
     Axis, BezPath, Cap, Line, Point, Rect, RoundedRect, Size, Stroke,
 };
-use xilem::masonry::layout::LenReq;
+use xilem::masonry::layout::{LenReq, Length};
 use xilem::masonry::peniko::{Color, Fill};
 
 use smallvec::SmallVec;
@@ -321,11 +321,11 @@ impl Widget for Scope {
         _props: &PropertiesRef<'_>,
         axis: Axis,
         _len_req: LenReq,
-        _cross_length: Option<f64>,
-    ) -> f64 {
+        _cross_length: Option<Length>,
+    ) -> Length {
         match axis {
-            Axis::Horizontal => SCOPE_WIDTH,
-            Axis::Vertical => SCOPE_HEIGHT,
+            Axis::Horizontal => Length::px(SCOPE_WIDTH),
+            Axis::Vertical => Length::px(SCOPE_HEIGHT),
         }
     }
 
@@ -338,7 +338,7 @@ impl Widget for Scope {
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, painter: &mut Painter<'_>) {
-        let size = ctx.content_box_size();
+        let size = ctx.content_box().size();
         let rect = Rect::from_origin_size(Point::ZERO, size);
         let rr = RoundedRect::from_rect(rect, BORDER_RADIUS);
 

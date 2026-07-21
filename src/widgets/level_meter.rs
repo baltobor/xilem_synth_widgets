@@ -13,7 +13,7 @@ use xilem::masonry::core::{
 };
 use xilem::masonry::imaging::Painter;
 use xilem::masonry::kurbo::{Axis, Rect, Size};
-use xilem::masonry::layout::LenReq;
+use xilem::masonry::layout::{LenReq, Length};
 use xilem::masonry::peniko::Fill;
 use xilem::Color;
 
@@ -169,20 +169,20 @@ impl Widget for LevelMeter {
 
     fn measure(
         &mut self, _: &mut MeasureCtx<'_>, _: &PropertiesRef<'_>,
-        axis: Axis, _: LenReq, _: Option<f64>,
-    ) -> f64 {
-        match (self.orientation, axis) {
+        axis: Axis, _: LenReq, _: Option<Length>,
+    ) -> Length {
+        Length::px(match (self.orientation, axis) {
             (Orientation::Horizontal, Axis::Horizontal) => METER_WIDTH,
             (Orientation::Horizontal, Axis::Vertical) => METER_HEIGHT,
             (Orientation::Vertical, Axis::Horizontal) => METER_HEIGHT,
             (Orientation::Vertical, Axis::Vertical) => METER_WIDTH,
-        }
+        })
     }
 
     fn layout(&mut self, _: &mut LayoutCtx<'_>, _: &PropertiesRef<'_>, _: Size) {}
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _: &PropertiesRef<'_>, painter: &mut Painter<'_>) {
-        let size = ctx.content_box_size();
+        let size = ctx.content_box().size();
         let norm = self.normalized();
 
         // Background

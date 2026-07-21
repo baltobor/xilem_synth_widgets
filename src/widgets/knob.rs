@@ -15,7 +15,7 @@ use xilem::masonry::core::{
 };
 use xilem::masonry::imaging::Painter;
 use xilem::masonry::kurbo::{Arc, Axis, Cap, Circle, Line, Point, Size, Stroke, Vec2};
-use xilem::masonry::layout::LenReq;
+use xilem::masonry::layout::{LenReq, Length};
 use xilem::masonry::peniko::{Color, Fill};
 
 use smallvec::SmallVec;
@@ -174,12 +174,12 @@ impl Widget for Knob {
         _props: &PropertiesRef<'_>,
         axis: Axis,
         _len_req: LenReq,
-        _cross_length: Option<f64>,
-    ) -> f64 {
+        _cross_length: Option<Length>,
+    ) -> Length {
         let side = self.radius() * 2.0 + 4.0;
         match axis {
-            Axis::Horizontal => side,
-            Axis::Vertical => side,
+            Axis::Horizontal => Length::px(side),
+            Axis::Vertical => Length::px(side),
         }
     }
 
@@ -187,7 +187,7 @@ impl Widget for Knob {
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, painter: &mut Painter<'_>) {
-        let size = ctx.content_box_size();
+        let size = ctx.content_box().size();
         let cx = size.width / 2.0;
         let cy = size.height / 2.0;
         let r = self.radius();

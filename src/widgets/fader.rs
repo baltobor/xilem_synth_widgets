@@ -15,7 +15,7 @@ use xilem::masonry::imaging::Painter;
 use xilem::masonry::kurbo::{
     Axis, Cap, Line, Point, Rect, RoundedRect, Size, Stroke,
 };
-use xilem::masonry::layout::LenReq;
+use xilem::masonry::layout::{LenReq, Length};
 use xilem::masonry::peniko::{Color, Fill};
 
 use smallvec::SmallVec;
@@ -149,7 +149,7 @@ impl Widget for Fader {
                 if ctx.is_active() {
                     if let Some(start_y) = self.drag_start_y {
                         let pos = ctx.local_position(current.position);
-                        let height = ctx.content_box_size().height;
+                        let height = ctx.content_box().height();
                         let (top, bottom) = Self::track_range(height);
                         let dy = start_y - pos.y;
                         let range = bottom - top;
@@ -192,11 +192,11 @@ impl Widget for Fader {
         _props: &PropertiesRef<'_>,
         axis: Axis,
         _len_req: LenReq,
-        _cross_length: Option<f64>,
-    ) -> f64 {
+        _cross_length: Option<Length>,
+    ) -> Length {
         match axis {
-            Axis::Horizontal => FADER_WIDTH,
-            Axis::Vertical => FADER_HEIGHT,
+            Axis::Horizontal => Length::px(FADER_WIDTH),
+            Axis::Vertical => Length::px(FADER_HEIGHT),
         }
     }
 
@@ -209,7 +209,7 @@ impl Widget for Fader {
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, painter: &mut Painter<'_>) {
-        let size = ctx.content_box_size();
+        let size = ctx.content_box().size();
         let cx = size.width / 2.0;
         let (track_top, track_bottom) = Self::track_range(size.height);
 

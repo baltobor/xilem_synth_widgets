@@ -13,7 +13,7 @@ use xilem::masonry::core::{
 };
 use xilem::masonry::imaging::Painter;
 use xilem::masonry::kurbo::{Affine, Axis, Point, Rect, RoundedRect, Size, Stroke, Vec2};
-use xilem::masonry::layout::LenReq;
+use xilem::masonry::layout::{LenReq, Length};
 use xilem::masonry::peniko::{Color, Fill};
 
 use xilem::masonry::parley::Layout;
@@ -318,21 +318,23 @@ impl Widget for GroupBox {
         _props: &PropertiesRef<'_>,
         axis: Axis,
         _len_req: LenReq,
-        cross_length: Option<f64>,
-    ) -> f64 {
+        cross_length: Option<Length>,
+    ) -> Length {
         // Ensure text layout
         self.ensure_text_layout(ctx.text_contexts());
 
         match axis {
             Axis::Horizontal => {
-                let child_cross = cross_length.map(|c| (c - LABEL_HEIGHT - PADDING * 2.0).max(0.0));
+                let child_cross = cross_length
+                    .map(|c| Length::px((c.get() - LABEL_HEIGHT - PADDING * 2.0).max(0.0)));
                 let child_w = ctx.redirect_measurement(&mut self.child, axis, child_cross);
-                child_w + PADDING * 2.0
+                Length::px(child_w.get() + PADDING * 2.0)
             }
             Axis::Vertical => {
-                let child_cross = cross_length.map(|c| (c - PADDING * 2.0).max(0.0));
+                let child_cross =
+                    cross_length.map(|c| Length::px((c.get() - PADDING * 2.0).max(0.0)));
                 let child_h = ctx.redirect_measurement(&mut self.child, axis, child_cross);
-                child_h + LABEL_HEIGHT + PADDING * 2.0
+                Length::px(child_h.get() + LABEL_HEIGHT + PADDING * 2.0)
             }
         }
     }
@@ -351,7 +353,7 @@ impl Widget for GroupBox {
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, painter: &mut Painter<'_>) {
-        let size = ctx.content_box_size();
+        let size = ctx.content_box().size();
         let rect = Rect::from_origin_size(Point::ZERO, size);
         let rr = RoundedRect::from_rect(rect, CORNER_RADIUS);
 
