@@ -1254,7 +1254,7 @@ dependencies = [
  "log",
  "presser",
  "thiserror 2.0.18",
- "windows 0.54.0",
+ "windows 0.62.2",
 ]
 
 [[package]]
@@ -1749,7 +1749,7 @@ dependencies = [
 [[package]]
 name = "linebender_include_doc_path"
 version = "0.1.0"
-source = "git+https://github.com/linebender/xilem?branch=main#c5950bcb03d4f3d187a20d1159f6aa276fd056bf"
+source = "git+https://github.com/linebender/xilem?branch=main#ce7b04d2ba2d9d7a8c364f2ab109e2083121e144"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1821,7 +1821,7 @@ dependencies = [
 [[package]]
 name = "masonry"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem?branch=main#c5950bcb03d4f3d187a20d1159f6aa276fd056bf"
+source = "git+https://github.com/linebender/xilem?branch=main#ce7b04d2ba2d9d7a8c364f2ab109e2083121e144"
 dependencies = [
  "accesskit",
  "linebender_include_doc_path",
@@ -1835,7 +1835,7 @@ dependencies = [
 [[package]]
 name = "masonry_core"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem?branch=main#c5950bcb03d4f3d187a20d1159f6aa276fd056bf"
+source = "git+https://github.com/linebender/xilem?branch=main#ce7b04d2ba2d9d7a8c364f2ab109e2083121e144"
 dependencies = [
  "accesskit",
  "anymap3",
@@ -1862,7 +1862,7 @@ dependencies = [
 [[package]]
 name = "masonry_imaging"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem?branch=main#c5950bcb03d4f3d187a20d1159f6aa276fd056bf"
+source = "git+https://github.com/linebender/xilem?branch=main#ce7b04d2ba2d9d7a8c364f2ab109e2083121e144"
 dependencies = [
  "imaging",
  "imaging_vello",
@@ -1875,7 +1875,7 @@ dependencies = [
 [[package]]
 name = "masonry_winit"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem?branch=main#c5950bcb03d4f3d187a20d1159f6aa276fd056bf"
+source = "git+https://github.com/linebender/xilem?branch=main#ce7b04d2ba2d9d7a8c364f2ab109e2083121e144"
 dependencies = [
  "accesskit_winit",
  "copypasta",
@@ -3601,7 +3601,7 @@ dependencies = [
 [[package]]
 name = "tree_arena"
 version = "0.2.0"
-source = "git+https://github.com/linebender/xilem?branch=main#c5950bcb03d4f3d187a20d1159f6aa276fd056bf"
+source = "git+https://github.com/linebender/xilem?branch=main#ce7b04d2ba2d9d7a8c364f2ab109e2083121e144"
 dependencies = [
  "hashbrown 0.17.0",
 ]
@@ -4779,7 +4779,7 @@ checksum = "bec9e4a500ca8864c5b47b8b482a73d62e4237670e5b5f1d6b9e3cae50f28f2b"
 [[package]]
 name = "xilem"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem?branch=main#c5950bcb03d4f3d187a20d1159f6aa276fd056bf"
+source = "git+https://github.com/linebender/xilem?branch=main#ce7b04d2ba2d9d7a8c364f2ab109e2083121e144"
 dependencies = [
  "masonry",
  "masonry_winit",
@@ -4793,7 +4793,7 @@ dependencies = [
 [[package]]
 name = "xilem_core"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem?branch=main#c5950bcb03d4f3d187a20d1159f6aa276fd056bf"
+source = "git+https://github.com/linebender/xilem?branch=main#ce7b04d2ba2d9d7a8c364f2ab109e2083121e144"
 dependencies = [
  "anymore",
  "hashbrown 0.17.0",
@@ -4803,7 +4803,7 @@ dependencies = [
 [[package]]
 name = "xilem_masonry"
 version = "0.4.0"
-source = "git+https://github.com/linebender/xilem?branch=main#c5950bcb03d4f3d187a20d1159f6aa276fd056bf"
+source = "git+https://github.com/linebender/xilem?branch=main#ce7b04d2ba2d9d7a8c364f2ab109e2083121e144"
 dependencies = [
  "masonry",
  "smallvec",

@@ -350,6 +350,13 @@ impl Widget for GroupBox {
         let child_size = Size::new(child_w, child_h);
         ctx.run_layout(&mut self.child, child_size);
         ctx.place_child(&mut self.child, Point::new(PADDING, LABEL_HEIGHT + PADDING));
+
+        // Clip to our own bounds: without this, a child whose content is
+        // even slightly taller than its measured/allocated size (rounding,
+        // sub-pixel font metrics, etc.) paints straight through into
+        // whatever sibling section a parent Flex/Grid placed next - layout
+        // positions stay correct, but painted content visually overlaps.
+        ctx.set_clip_path(Rect::from_origin_size(Point::ZERO, size));
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, painter: &mut Painter<'_>) {
