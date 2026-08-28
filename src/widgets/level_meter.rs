@@ -5,17 +5,16 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
+use xilem::Color;
 use xilem::masonry::accesskit::{Node, Role};
 use xilem::masonry::core::{
-    AccessCtx, EventCtx, LayoutCtx, MeasureCtx, PaintCtx, PointerEvent,
-    PropertiesMut, PropertiesRef, RegisterCtx, Update, UpdateCtx, Widget, WidgetId,
-    WidgetMut,
+    AccessCtx, EventCtx, LayoutCtx, MeasureCtx, PaintCtx, PointerEvent, PropertiesMut,
+    PropertiesRef, RegisterCtx, Update, UpdateCtx, Widget, WidgetId, WidgetMut,
 };
 use xilem::masonry::imaging::Painter;
 use xilem::masonry::kurbo::{Axis, Rect, Size};
 use xilem::masonry::layout::{LenReq, Length};
 use xilem::masonry::peniko::Fill;
-use xilem::Color;
 
 use smallvec::SmallVec;
 use tracing::trace_span;
@@ -78,7 +77,14 @@ pub struct LevelMeter {
 
 impl LevelMeter {
     pub fn new(value: f64, min: f64, max: f64, orientation: Orientation) -> Self {
-        Self { value, min, max, orientation, style: MeterStyle::Gradient, scale: MeterScale::Db }
+        Self {
+            value,
+            min,
+            max,
+            orientation,
+            style: MeterStyle::Gradient,
+            scale: MeterScale::Db,
+        }
     }
 
     /// Set the visual style (gradient or tint).
@@ -129,11 +135,19 @@ impl LevelMeter {
     /// Smoothly interpolate between green → orange → red based on fill level.
     fn interpolate_color(norm: f64, threshold: f64, zero: f64) -> Color {
         if norm <= threshold {
-            let t = if threshold > 0.0 { norm / threshold } else { 0.0 };
+            let t = if threshold > 0.0 {
+                norm / threshold
+            } else {
+                0.0
+            };
             Self::lerp_color(GREEN, ORANGE, t)
         } else if norm <= zero {
             let range = zero - threshold;
-            let t = if range > 0.0 { (norm - threshold) / range } else { 1.0 };
+            let t = if range > 0.0 {
+                (norm - threshold) / range
+            } else {
+                1.0
+            };
             Self::lerp_color(ORANGE, RED, t)
         } else {
             RED
@@ -153,7 +167,9 @@ impl LevelMeter {
 
     fn normalized(&self) -> f64 {
         let range = self.max - self.min;
-        if range.abs() < f64::EPSILON { return 0.0; }
+        if range.abs() < f64::EPSILON {
+            return 0.0;
+        }
         ((self.value - self.min) / range).clamp(0.0, 1.0)
     }
 }
@@ -161,15 +177,29 @@ impl LevelMeter {
 impl Widget for LevelMeter {
     type Action = ();
 
-    fn on_pointer_event(&mut self, _: &mut EventCtx<'_>, _: &mut PropertiesMut<'_>, _: &PointerEvent) {}
-    fn accepts_pointer_interaction(&self) -> bool { false }
-    fn accepts_focus(&self) -> bool { false }
+    fn on_pointer_event(
+        &mut self,
+        _: &mut EventCtx<'_>,
+        _: &mut PropertiesMut<'_>,
+        _: &PointerEvent,
+    ) {
+    }
+    fn accepts_pointer_interaction(&self) -> bool {
+        false
+    }
+    fn accepts_focus(&self) -> bool {
+        false
+    }
     fn register_children(&mut self, _: &mut RegisterCtx<'_>) {}
     fn update(&mut self, _: &mut UpdateCtx<'_>, _: &mut PropertiesMut<'_>, _: &Update) {}
 
     fn measure(
-        &mut self, _: &mut MeasureCtx<'_>, _: &PropertiesRef<'_>,
-        axis: Axis, _: LenReq, _: Option<Length>,
+        &mut self,
+        _: &mut MeasureCtx<'_>,
+        _: &PropertiesRef<'_>,
+        axis: Axis,
+        _: LenReq,
+        _: Option<Length>,
     ) -> Length {
         Length::px(match (self.orientation, axis) {
             (Orientation::Horizontal, Axis::Horizontal) => METER_WIDTH,
@@ -187,9 +217,14 @@ impl Widget for LevelMeter {
 
         // Background
         let bg_rect = Rect::new(0.0, 0.0, size.width, size.height);
-        painter.fill(&bg_rect, BG_COLOR).fill_rule(Fill::NonZero).draw();
+        painter
+            .fill(&bg_rect, BG_COLOR)
+            .fill_rule(Fill::NonZero)
+            .draw();
 
-        if norm < 0.001 { return; }
+        if norm < 0.001 {
+            return;
+        }
 
         // Compute thresholds based on scale mode
         let (threshold_norm, zero_norm) = match self.scale {
@@ -275,14 +310,18 @@ impl Widget for LevelMeter {
         }
     }
 
-    fn accessibility_role(&self) -> Role { Role::Meter }
+    fn accessibility_role(&self) -> Role {
+        Role::Meter
+    }
     fn accessibility(&mut self, _: &mut AccessCtx<'_>, _: &PropertiesRef<'_>, node: &mut Node) {
         node.set_numeric_value(self.value);
         node.set_min_numeric_value(self.min);
         node.set_max_numeric_value(self.max);
     }
 
-    fn children_ids(&self) -> SmallVec<[WidgetId; 16]> { SmallVec::new() }
+    fn children_ids(&self) -> SmallVec<[WidgetId; 16]> {
+        SmallVec::new()
+    }
 
     fn make_trace_span(&self, id: WidgetId) -> tracing::Span {
         trace_span!("LevelMeter", id = id.trace())

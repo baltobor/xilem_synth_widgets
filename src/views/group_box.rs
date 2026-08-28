@@ -5,8 +5,8 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-use xilem::core::{MessageCtx, Mut, View, ViewMarker, ViewId, ViewPathTracker};
 use xilem::core::MessageResult;
+use xilem::core::{MessageCtx, Mut, View, ViewId, ViewMarker, ViewPathTracker};
 use xilem::{Pod, ViewCtx, WidgetView};
 
 use crate::widgets::group_box::GroupBox as GroupBoxWidget;
@@ -14,6 +14,11 @@ use crate::widgets::group_box::GroupBox as GroupBoxWidget;
 const CHILD_VIEW_ID: ViewId = ViewId::new(0);
 
 /// A group box view with a label and solid background.
+///
+/// By default the group box sizes itself to its content. To make it expand
+/// vertically inside a flex container, call [`.fill()`](GroupBox::fill) —
+/// without it the flex parent will not distribute extra vertical space to
+/// this widget.
 pub struct GroupBox<V> {
     label: String,
     child: V,
@@ -47,6 +52,12 @@ impl<V> GroupBox<V> {
         self
     }
 
+    /// Enables vertical fill: the group box will expand to consume all
+    /// available vertical space offered by a flex parent.
+    ///
+    /// Without this, the group box always reports its natural (content-based)
+    /// height to the flex layout, so it will never grow beyond its minimum
+    /// size regardless of how much space is available.
     pub fn fill(mut self) -> Self {
         self.fill = true;
         self
@@ -64,18 +75,19 @@ where
     type Element = Pod<GroupBoxWidget>;
     type ViewState = V::ViewState;
 
-    fn build(
-        &self,
-        ctx: &mut ViewCtx,
-        app_state: &mut State,
-    ) -> (Self::Element, Self::ViewState) {
-        let (child_pod, child_state) = ctx.with_id(CHILD_VIEW_ID, |ctx| {
-            self.child.build(ctx, app_state)
-        });
+    fn build(&self, ctx: &mut ViewCtx, app_state: &mut State) -> (Self::Element, Self::ViewState) {
+        let (child_pod, child_state) =
+            ctx.with_id(CHILD_VIEW_ID, |ctx| self.child.build(ctx, app_state));
         let mut w = GroupBoxWidget::new(&self.label, child_pod.new_widget);
-        if let Some(c) = self.bg_color { w = w.with_bg_color(c); }
-        if let Some(c) = self.tint { w = w.with_tint(c); }
-        if self.fill { w = w.with_fill(true); }
+        if let Some(c) = self.bg_color {
+            w = w.with_bg_color(c);
+        }
+        if let Some(c) = self.tint {
+            w = w.with_tint(c);
+        }
+        if self.fill {
+            w = w.with_fill(true);
+        }
         let pod = ctx.with_action_widget(|ctx| ctx.create_pod(w));
         (pod, child_state)
     }
@@ -92,10 +104,14 @@ where
             GroupBoxWidget::set_label(&mut element, &self.label);
         }
         if prev.bg_color != self.bg_color {
-            if let Some(c) = self.bg_color { GroupBoxWidget::set_bg_color(&mut element, c); }
+            if let Some(c) = self.bg_color {
+                GroupBoxWidget::set_bg_color(&mut element, c);
+            }
         }
         if prev.tint != self.tint {
-            if let Some(c) = self.tint { GroupBoxWidget::set_tint(&mut element, c); }
+            if let Some(c) = self.tint {
+                GroupBoxWidget::set_tint(&mut element, c);
+            }
         }
         if prev.fill != self.fill {
             GroupBoxWidget::set_fill(&mut element, self.fill);

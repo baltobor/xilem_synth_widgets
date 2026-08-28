@@ -16,9 +16,9 @@ use xilem::masonry::kurbo::{Affine, Axis, Point, Rect, RoundedRect, Size, Stroke
 use xilem::masonry::layout::{LenReq, Length};
 use xilem::masonry::peniko::{Color, Fill};
 
-use xilem::masonry::parley::Layout;
 use smallvec::SmallVec;
 use tracing::trace_span;
+use xilem::masonry::parley::Layout;
 
 const LABEL_HEIGHT: f64 = 16.0;
 const PADDING: f64 = 8.0;
@@ -40,7 +40,11 @@ fn hsl_to_rgb(h: f64, s: f64, l: f64) -> (f64, f64, f64) {
     if s == 0.0 {
         return (l, l, l);
     }
-    let q = if l < 0.5 { l * (1.0 + s) } else { l + s - l * s };
+    let q = if l < 0.5 {
+        l * (1.0 + s)
+    } else {
+        l + s - l * s
+    };
     let p = 2.0 * l - q;
     let hue_to_rgb = |t: f64| {
         let t = ((t % 1.0) + 1.0) % 1.0;
@@ -54,7 +58,11 @@ fn hsl_to_rgb(h: f64, s: f64, l: f64) -> (f64, f64, f64) {
             p
         }
     };
-    (hue_to_rgb(h + 1.0 / 3.0), hue_to_rgb(h), hue_to_rgb(h - 1.0 / 3.0))
+    (
+        hue_to_rgb(h + 1.0 / 3.0),
+        hue_to_rgb(h),
+        hue_to_rgb(h - 1.0 / 3.0),
+    )
 }
 
 /// sRGB to perceptual luminance (Y) using APCA linearization.
@@ -89,17 +97,35 @@ fn apca_contrast(txt_y: f64, bg_y: f64) -> f64 {
     const DELTA_Y_MIN: f64 = 0.0005;
     const LO_CLIP: f64 = 0.1;
 
-    let ty = if txt_y > BLK_THRS { txt_y } else { txt_y + (BLK_THRS - txt_y).powf(BLK_CLMP) };
-    let by = if bg_y > BLK_THRS { bg_y } else { bg_y + (BLK_THRS - bg_y).powf(BLK_CLMP) };
+    let ty = if txt_y > BLK_THRS {
+        txt_y
+    } else {
+        txt_y + (BLK_THRS - txt_y).powf(BLK_CLMP)
+    };
+    let by = if bg_y > BLK_THRS {
+        bg_y
+    } else {
+        bg_y + (BLK_THRS - bg_y).powf(BLK_CLMP)
+    };
 
-    if (by - ty).abs() < DELTA_Y_MIN { return 0.0; }
+    if (by - ty).abs() < DELTA_Y_MIN {
+        return 0.0;
+    }
 
     if by > ty {
         let sapc = (by.powf(NORM_BG) - ty.powf(NORM_TXT)) * SCALE_BOW;
-        if sapc < LO_CLIP { 0.0 } else { (sapc - LO_BOW_OFFSET) * 100.0 }
+        if sapc < LO_CLIP {
+            0.0
+        } else {
+            (sapc - LO_BOW_OFFSET) * 100.0
+        }
     } else {
         let sapc = (by.powf(REV_BG) - ty.powf(REV_TXT)) * SCALE_WOB;
-        if sapc > -LO_CLIP { 0.0 } else { (sapc + LO_WOB_OFFSET) * 100.0 }
+        if sapc > -LO_CLIP {
+            0.0
+        } else {
+            (sapc + LO_WOB_OFFSET) * 100.0
+        }
     }
 }
 
@@ -148,7 +174,9 @@ fn inverse_contrast_color(bg: Color) -> Color {
     let mut l2 = (l * (1.0 - contrast)) / (contrast + 1.0);
     if l < 0.382 && (l - l2).abs() < 0.382 {
         l2 = 1.0 - l2;
-        if l2 < 0.5 { l2 = 0.5; }
+        if l2 < 0.5 {
+            l2 = 0.5;
+        }
     }
     // Cap lightness — rich but not washed out
     l2 = l2.min(0.55);
@@ -286,7 +314,10 @@ impl GroupBox {
 
     fn ensure_text_layout(
         &mut self,
-        (font_ctx, layout_ctx): (&mut xilem::masonry::parley::FontContext, &mut xilem::masonry::parley::LayoutContext<BrushIndex>),
+        (font_ctx, layout_ctx): (
+            &mut xilem::masonry::parley::FontContext,
+            &mut xilem::masonry::parley::LayoutContext<BrushIndex>,
+        ),
     ) {
         if self.needs_layout {
             let mut builder = layout_ctx.ranged_builder(font_ctx, &self.label, 1.0, true);
@@ -303,25 +334,44 @@ impl Widget for GroupBox {
     type Action = ();
 
     fn on_pointer_event(
-        &mut self, _ctx: &mut EventCtx<'_>, _props: &mut PropertiesMut<'_>, _event: &PointerEvent,
-    ) {}
+        &mut self,
+        _ctx: &mut EventCtx<'_>,
+        _props: &mut PropertiesMut<'_>,
+        _event: &PointerEvent,
+    ) {
+    }
 
     fn register_children(&mut self, ctx: &mut RegisterCtx<'_>) {
         ctx.register_child(&mut self.child);
     }
 
-    fn update(&mut self, _ctx: &mut UpdateCtx<'_>, _props: &mut PropertiesMut<'_>, _event: &Update) {}
+    fn update(
+        &mut self,
+        _ctx: &mut UpdateCtx<'_>,
+        _props: &mut PropertiesMut<'_>,
+        _event: &Update,
+    ) {
+    }
 
     fn measure(
         &mut self,
         ctx: &mut MeasureCtx<'_>,
         _props: &PropertiesRef<'_>,
         axis: Axis,
-        _len_req: LenReq,
+        len_req: LenReq,
         cross_length: Option<Length>,
     ) -> Length {
         // Ensure text layout
         self.ensure_text_layout(ctx.text_contexts());
+
+        // When fill is enabled and the parent offers explicit space via
+        // FitContent, claim all of it. MinContent and MaxContent fall through
+        // to natural-size measurement so the widget still has a valid minimum.
+        if self.fill && axis == Axis::Vertical {
+            if let LenReq::FitContent(space) = len_req {
+                return space;
+            }
+        }
 
         match axis {
             Axis::Horizontal => {
@@ -339,9 +389,7 @@ impl Widget for GroupBox {
         }
     }
 
-    fn layout(
-        &mut self, ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, size: Size,
-    ) {
+    fn layout(&mut self, ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, size: Size) {
         // Build label text layout
         self.ensure_text_layout(ctx.text_contexts());
 
@@ -359,16 +407,26 @@ impl Widget for GroupBox {
         ctx.set_clip_path(Rect::from_origin_size(Point::ZERO, size));
     }
 
-    fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, painter: &mut Painter<'_>) {
+    fn paint(
+        &mut self,
+        ctx: &mut PaintCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        painter: &mut Painter<'_>,
+    ) {
         let size = ctx.content_box().size();
         let rect = Rect::from_origin_size(Point::ZERO, size);
         let rr = RoundedRect::from_rect(rect, CORNER_RADIUS);
 
         // Background
-        painter.fill(rr, self.bg_color).fill_rule(Fill::NonZero).draw();
+        painter
+            .fill(rr, self.bg_color)
+            .fill_rule(Fill::NonZero)
+            .draw();
 
         // Subtle border
-        painter.stroke(rr, &Stroke::new(BORDER_WIDTH), self.border_color).draw();
+        painter
+            .stroke(rr, &Stroke::new(BORDER_WIDTH), self.border_color)
+            .draw();
 
         // Label text using inverse contrast color (always readable).
         let label_color = inverse_contrast_color(self.bg_color);
@@ -383,10 +441,15 @@ impl Widget for GroupBox {
         );
     }
 
-    fn accessibility_role(&self) -> Role { Role::Group }
+    fn accessibility_role(&self) -> Role {
+        Role::Group
+    }
 
     fn accessibility(
-        &mut self, _ctx: &mut AccessCtx<'_>, _props: &PropertiesRef<'_>, node: &mut Node,
+        &mut self,
+        _ctx: &mut AccessCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        node: &mut Node,
     ) {
         node.set_label(self.label.clone());
     }

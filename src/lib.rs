@@ -5,18 +5,18 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-pub mod widgets;
-mod views;
 pub mod theme;
+mod views;
+pub mod widgets;
 
 pub use views::fader::fader;
 pub use views::group_box::group_box;
 pub use views::knob::knob;
-pub use views::param_selector::{param_selector, LabelAlign};
-pub use views::push_button::push_button;
-pub use views::scope::{scope, ScopeBuffer, ScopeSource};
 pub use views::led::led;
 pub use views::level_meter::level_meter;
+pub use views::param_selector::{LabelAlign, param_selector};
+pub use views::push_button::push_button;
+pub use views::scope::{ScopeBuffer, ScopeSource, scope};
 pub use widgets::level_meter::{MeterScale, MeterStyle, Orientation};
 
 pub use xilem;

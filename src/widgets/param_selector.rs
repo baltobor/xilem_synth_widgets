@@ -16,9 +16,9 @@ use xilem::masonry::kurbo::{Affine, Axis, Circle, Point, Rect, RoundedRect, Size
 use xilem::masonry::layout::{LenReq, Length};
 use xilem::masonry::peniko::{Color, Fill};
 
-use xilem::masonry::parley::Layout;
 use smallvec::SmallVec;
 use tracing::trace_span;
+use xilem::masonry::parley::Layout;
 
 use crate::theme::DEFAULT_TINT;
 
@@ -81,7 +81,10 @@ impl ParamSelector {
     pub fn set_labels(this: &mut WidgetMut<'_, Self>, labels: Vec<String>) {
         this.widget.count = labels.len();
         this.widget.labels = labels;
-        this.widget.selected = this.widget.selected.min(this.widget.count.saturating_sub(1));
+        this.widget.selected = this
+            .widget
+            .selected
+            .min(this.widget.count.saturating_sub(1));
         this.widget.needs_layout = true;
         this.ctx.request_layout();
     }
@@ -120,7 +123,10 @@ impl ParamSelector {
 
     fn ensure_text_layouts(
         &mut self,
-        (font_ctx, layout_ctx): (&mut xilem::masonry::parley::FontContext, &mut xilem::masonry::parley::LayoutContext<BrushIndex>),
+        (font_ctx, layout_ctx): (
+            &mut xilem::masonry::parley::FontContext,
+            &mut xilem::masonry::parley::LayoutContext<BrushIndex>,
+        ),
     ) {
         if self.needs_layout || self.text_layouts.len() != self.labels.len() {
             self.text_layouts.clear();
@@ -140,9 +146,14 @@ impl Widget for ParamSelector {
     type Action = usize;
 
     fn on_pointer_event(
-        &mut self, ctx: &mut EventCtx<'_>, _props: &mut PropertiesMut<'_>, event: &PointerEvent,
+        &mut self,
+        ctx: &mut EventCtx<'_>,
+        _props: &mut PropertiesMut<'_>,
+        event: &PointerEvent,
     ) {
-        if ctx.is_disabled() { return; }
+        if ctx.is_disabled() {
+            return;
+        }
         if let PointerEvent::Up(PointerButtonEvent { state, .. }) = event {
             let pos = ctx.local_position(state.position);
             if let Some(idx) = self.hit_test(pos, ctx.content_box().size()) {
@@ -155,9 +166,17 @@ impl Widget for ParamSelector {
         }
     }
 
-    fn accepts_pointer_interaction(&self) -> bool { true }
+    fn accepts_pointer_interaction(&self) -> bool {
+        true
+    }
     fn register_children(&mut self, _ctx: &mut RegisterCtx<'_>) {}
-    fn update(&mut self, _ctx: &mut UpdateCtx<'_>, _props: &mut PropertiesMut<'_>, _event: &Update) {}
+    fn update(
+        &mut self,
+        _ctx: &mut UpdateCtx<'_>,
+        _props: &mut PropertiesMut<'_>,
+        _event: &Update,
+    ) {
+    }
 
     fn measure(
         &mut self,
@@ -173,7 +192,9 @@ impl Widget for ParamSelector {
         match axis {
             Axis::Horizontal => {
                 let dot_col_w = Self::dot_col_w();
-                let max_text_w = self.text_layouts.iter()
+                let max_text_w = self
+                    .text_layouts
+                    .iter()
                     .map(|l| l.width() as f64)
                     .fold(0.0_f64, f64::max);
                 Length::px(max_text_w + dot_col_w + LABEL_GAP)
@@ -182,14 +203,17 @@ impl Widget for ParamSelector {
         }
     }
 
-    fn layout(
-        &mut self, ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, _size: Size,
-    ) {
+    fn layout(&mut self, ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, _size: Size) {
         // Build text layouts for each label
         self.ensure_text_layouts(ctx.text_contexts());
     }
 
-    fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, painter: &mut Painter<'_>) {
+    fn paint(
+        &mut self,
+        ctx: &mut PaintCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        painter: &mut Painter<'_>,
+    ) {
         let size = ctx.content_box().size();
         let dot_col_w = Self::dot_col_w();
 
@@ -201,12 +225,23 @@ impl Widget for ParamSelector {
             LabelAlign::Right => dot_col_w / 2.0,
         };
         let frame_rect = Rect::new(
-            dot_center_x - frame_w / 2.0, frame_pad,
-            dot_center_x + frame_w / 2.0, size.height - frame_pad,
+            dot_center_x - frame_w / 2.0,
+            frame_pad,
+            dot_center_x + frame_w / 2.0,
+            size.height - frame_pad,
         );
         let frame_rr = RoundedRect::from_rect(frame_rect, frame_w / 2.0);
-        painter.fill(frame_rr, Color::from_rgb8(0x2A, 0x2A, 0x2A)).fill_rule(Fill::NonZero).draw();
-        painter.stroke(frame_rr, &Stroke::new(1.0), Color::from_rgb8(0x55, 0x55, 0x55)).draw();
+        painter
+            .fill(frame_rr, Color::from_rgb8(0x2A, 0x2A, 0x2A))
+            .fill_rule(Fill::NonZero)
+            .draw();
+        painter
+            .stroke(
+                frame_rr,
+                &Stroke::new(1.0),
+                Color::from_rgb8(0x55, 0x55, 0x55),
+            )
+            .draw();
 
         for i in 0..self.count {
             let (y0, _) = self.row_rect(i, size);
@@ -215,7 +250,11 @@ impl Widget for ParamSelector {
             let left = self.label_on_left(i);
 
             // Dot
-            let dot_x = if left { size.width - dot_col_w / 2.0 } else { dot_col_w / 2.0 };
+            let dot_x = if left {
+                size.width - dot_col_w / 2.0
+            } else {
+                dot_col_w / 2.0
+            };
             let center = Point::new(dot_x, cy);
             if is_selected {
                 let dot = Circle::new(center, DOT_RADIUS + 1.5);
@@ -250,17 +289,24 @@ impl Widget for ParamSelector {
         }
     }
 
-    fn accessibility_role(&self) -> Role { Role::RadioGroup }
+    fn accessibility_role(&self) -> Role {
+        Role::RadioGroup
+    }
 
     fn accessibility(
-        &mut self, _ctx: &mut AccessCtx<'_>, _props: &PropertiesRef<'_>, node: &mut Node,
+        &mut self,
+        _ctx: &mut AccessCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        node: &mut Node,
     ) {
         if self.selected < self.labels.len() {
             node.set_description(self.labels[self.selected].clone());
         }
     }
 
-    fn children_ids(&self) -> SmallVec<[WidgetId; 16]> { SmallVec::new() }
+    fn children_ids(&self) -> SmallVec<[WidgetId; 16]> {
+        SmallVec::new()
+    }
 
     fn make_trace_span(&self, id: WidgetId) -> tracing::Span {
         trace_span!("ParamSelector", id = id.trace())

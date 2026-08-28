@@ -5,8 +5,8 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-use xilem::core::{MessageCtx, Mut, View, ViewMarker};
 use xilem::core::MessageResult;
+use xilem::core::{MessageCtx, Mut, View, ViewMarker};
 use xilem::{Pod, ViewCtx};
 
 use crate::widgets::scope::Scope as ScopeWidget;
@@ -108,7 +108,12 @@ where
         }
     }
 
-    fn teardown(&self, _: &mut Self::ViewState, ctx: &mut ViewCtx, element: Mut<'_, Self::Element>) {
+    fn teardown(
+        &self,
+        _: &mut Self::ViewState,
+        ctx: &mut ViewCtx,
+        element: Mut<'_, Self::Element>,
+    ) {
         ctx.teardown_action_source(element);
     }
 

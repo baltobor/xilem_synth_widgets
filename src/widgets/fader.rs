@@ -12,9 +12,7 @@ use xilem::masonry::core::{
     WidgetMut,
 };
 use xilem::masonry::imaging::Painter;
-use xilem::masonry::kurbo::{
-    Axis, Cap, Line, Point, Rect, RoundedRect, Size, Stroke,
-};
+use xilem::masonry::kurbo::{Axis, Cap, Line, Point, Rect, RoundedRect, Size, Stroke};
 use xilem::masonry::layout::{LenReq, Length};
 use xilem::masonry::peniko::{Color, Fill};
 
@@ -74,7 +72,10 @@ impl Fader {
         this.ctx.request_render();
     }
 
-    pub fn with_tint(mut self, color: Color) -> Self { self.tint = color; self }
+    pub fn with_tint(mut self, color: Color) -> Self {
+        self.tint = color;
+        self
+    }
 
     pub fn set_tint(this: &mut WidgetMut<'_, Self>, color: Color) {
         this.widget.tint = color;
@@ -184,7 +185,13 @@ impl Widget for Fader {
 
     fn register_children(&mut self, _ctx: &mut RegisterCtx<'_>) {}
 
-    fn update(&mut self, _ctx: &mut UpdateCtx<'_>, _props: &mut PropertiesMut<'_>, _event: &Update) {}
+    fn update(
+        &mut self,
+        _ctx: &mut UpdateCtx<'_>,
+        _props: &mut PropertiesMut<'_>,
+        _event: &Update,
+    ) {
+    }
 
     fn measure(
         &mut self,
@@ -200,15 +207,14 @@ impl Widget for Fader {
         }
     }
 
-    fn layout(
-        &mut self,
-        _ctx: &mut LayoutCtx<'_>,
-        _props: &PropertiesRef<'_>,
-        _size: Size,
-    ) {
-    }
+    fn layout(&mut self, _ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, _size: Size) {}
 
-    fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, painter: &mut Painter<'_>) {
+    fn paint(
+        &mut self,
+        ctx: &mut PaintCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        painter: &mut Painter<'_>,
+    ) {
         let size = ctx.content_box().size();
         let cx = size.width / 2.0;
         let (track_top, track_bottom) = Self::track_range(size.height);
@@ -221,7 +227,10 @@ impl Widget for Fader {
             track_bottom,
         );
         let track_rr = RoundedRect::from_rect(track_rect, TRACK_WIDTH / 2.0);
-        painter.fill(track_rr, Color::from_rgb8(0x30, 0x30, 0x30)).fill_rule(Fill::NonZero).draw();
+        painter
+            .fill(track_rr, Color::from_rgb8(0x30, 0x30, 0x30))
+            .fill_rule(Fill::NonZero)
+            .draw();
 
         // dB scale marks
         let mark_color = Color::from_rgb8(0x70, 0x70, 0x70);
@@ -233,7 +242,13 @@ impl Widget for Fader {
                 let y = track_bottom - norm * (track_bottom - track_top);
                 let left = cx - TRACK_WIDTH / 2.0 - 6.0;
                 let right = cx - TRACK_WIDTH / 2.0 - 2.0;
-                painter.stroke(Line::new(Point::new(left, y), Point::new(right, y)), &mark_stroke, mark_color).draw();
+                painter
+                    .stroke(
+                        Line::new(Point::new(left, y), Point::new(right, y)),
+                        &mark_stroke,
+                        mark_color,
+                    )
+                    .draw();
             }
         }
 
@@ -244,17 +259,27 @@ impl Widget for Fader {
             let default_color = Color::from_rgb8(0xB0, 0xB0, 0xB0);
             let default_stroke = Stroke::new(1.5);
             // Left tick
-            painter.stroke(
-                Line::new(Point::new(cx - TRACK_WIDTH / 2.0 - 8.0, y),
-                           Point::new(cx - TRACK_WIDTH / 2.0 - 1.0, y)),
-                &default_stroke, default_color,
-            ).draw();
+            painter
+                .stroke(
+                    Line::new(
+                        Point::new(cx - TRACK_WIDTH / 2.0 - 8.0, y),
+                        Point::new(cx - TRACK_WIDTH / 2.0 - 1.0, y),
+                    ),
+                    &default_stroke,
+                    default_color,
+                )
+                .draw();
             // Right tick
-            painter.stroke(
-                Line::new(Point::new(cx + TRACK_WIDTH / 2.0 + 1.0, y),
-                           Point::new(cx + TRACK_WIDTH / 2.0 + 8.0, y)),
-                &default_stroke, default_color,
-            ).draw();
+            painter
+                .stroke(
+                    Line::new(
+                        Point::new(cx + TRACK_WIDTH / 2.0 + 1.0, y),
+                        Point::new(cx + TRACK_WIDTH / 2.0 + 8.0, y),
+                    ),
+                    &default_stroke,
+                    default_color,
+                )
+                .draw();
         }
 
         // Lit fill from bottom to grip
@@ -266,7 +291,10 @@ impl Widget for Fader {
                 cx + TRACK_WIDTH / 2.0 - 0.5,
                 track_bottom,
             );
-            painter.fill(lit_rect, self.tint).fill_rule(Fill::NonZero).draw();
+            painter
+                .fill(lit_rect, self.tint)
+                .fill_rule(Fill::NonZero)
+                .draw();
         }
 
         // Grip knob
@@ -284,21 +312,33 @@ impl Widget for Fader {
         } else {
             Color::from_rgb8(0x6A, 0x6A, 0x6A)
         };
-        painter.fill(grip_rr, grip_color).fill_rule(Fill::NonZero).draw();
-        painter.stroke(grip_rr, &Stroke::new(1.0), Color::from_rgb8(0xA0, 0xA0, 0xA0)).draw();
+        painter
+            .fill(grip_rr, grip_color)
+            .fill_rule(Fill::NonZero)
+            .draw();
+        painter
+            .stroke(
+                grip_rr,
+                &Stroke::new(1.0),
+                Color::from_rgb8(0xA0, 0xA0, 0xA0),
+            )
+            .draw();
 
         // Grip lines (texture)
         let line_stroke = Stroke::new(0.5).with_caps(Cap::Butt);
         let line_color = Color::from_rgb8(0x50, 0x50, 0x50);
         for i in [-2.0, 0.0, 2.0] {
             let y = grip_y + i;
-            painter.stroke(
-                Line::new(
-                    Point::new(cx - GRIP_WIDTH / 2.0 + 4.0, y),
-                    Point::new(cx + GRIP_WIDTH / 2.0 - 4.0, y),
-                ),
-                &line_stroke, line_color,
-            ).draw();
+            painter
+                .stroke(
+                    Line::new(
+                        Point::new(cx - GRIP_WIDTH / 2.0 + 4.0, y),
+                        Point::new(cx + GRIP_WIDTH / 2.0 - 4.0, y),
+                    ),
+                    &line_stroke,
+                    line_color,
+                )
+                .draw();
         }
     }
 

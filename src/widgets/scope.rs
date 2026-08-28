@@ -13,9 +13,7 @@ use xilem::masonry::core::{
     PropertiesRef, RegisterCtx, Update, UpdateCtx, Widget, WidgetId, WidgetMut,
 };
 use xilem::masonry::imaging::Painter;
-use xilem::masonry::kurbo::{
-    Axis, BezPath, Cap, Line, Point, Rect, RoundedRect, Size, Stroke,
-};
+use xilem::masonry::kurbo::{Axis, BezPath, Cap, Line, Point, Rect, RoundedRect, Size, Stroke};
 use xilem::masonry::layout::{LenReq, Length};
 use xilem::masonry::peniko::{Color, Fill};
 
@@ -297,7 +295,10 @@ impl Widget for Scope {
     fn register_children(&mut self, _ctx: &mut RegisterCtx<'_>) {}
 
     fn on_anim_frame(
-        &mut self, ctx: &mut UpdateCtx<'_>, _props: &mut PropertiesMut<'_>, _interval: u64,
+        &mut self,
+        ctx: &mut UpdateCtx<'_>,
+        _props: &mut PropertiesMut<'_>,
+        _interval: u64,
     ) {
         if let Some(ref source) = self.source {
             if let Some(buf) = source.poll() {
@@ -329,21 +330,23 @@ impl Widget for Scope {
         }
     }
 
-    fn layout(
-        &mut self,
-        _ctx: &mut LayoutCtx<'_>,
-        _props: &PropertiesRef<'_>,
-        _size: Size,
-    ) {
-    }
+    fn layout(&mut self, _ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, _size: Size) {}
 
-    fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, painter: &mut Painter<'_>) {
+    fn paint(
+        &mut self,
+        ctx: &mut PaintCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        painter: &mut Painter<'_>,
+    ) {
         let size = ctx.content_box().size();
         let rect = Rect::from_origin_size(Point::ZERO, size);
         let rr = RoundedRect::from_rect(rect, BORDER_RADIUS);
 
         // Background
-        painter.fill(rr, self.bg_color).fill_rule(Fill::NonZero).draw();
+        painter
+            .fill(rr, self.bg_color)
+            .fill_rule(Fill::NonZero)
+            .draw();
 
         let draw_x = PADDING;
         let draw_y = PADDING;
@@ -354,31 +357,49 @@ impl Widget for Scope {
         // Grid lines
         let grid_stroke = Stroke::new(0.5);
         // Horizontal center line
-        painter.stroke(
-            Line::new(Point::new(draw_x, mid_y), Point::new(draw_x + draw_w, mid_y)),
-            &grid_stroke, self.grid_color,
-        ).draw();
+        painter
+            .stroke(
+                Line::new(
+                    Point::new(draw_x, mid_y),
+                    Point::new(draw_x + draw_w, mid_y),
+                ),
+                &grid_stroke,
+                self.grid_color,
+            )
+            .draw();
         // Quarter lines
         for frac in [0.25, 0.75] {
             let y = draw_y + draw_h * frac;
-            painter.stroke(
-                Line::new(Point::new(draw_x, y), Point::new(draw_x + draw_w, y)),
-                &grid_stroke, self.grid_color,
-            ).draw();
+            painter
+                .stroke(
+                    Line::new(Point::new(draw_x, y), Point::new(draw_x + draw_w, y)),
+                    &grid_stroke,
+                    self.grid_color,
+                )
+                .draw();
         }
         // Vertical center
         let mid_x = draw_x + draw_w / 2.0;
-        painter.stroke(
-            Line::new(Point::new(mid_x, draw_y), Point::new(mid_x, draw_y + draw_h)),
-            &grid_stroke, self.grid_color,
-        ).draw();
+        painter
+            .stroke(
+                Line::new(
+                    Point::new(mid_x, draw_y),
+                    Point::new(mid_x, draw_y + draw_h),
+                ),
+                &grid_stroke,
+                self.grid_color,
+            )
+            .draw();
         // Vertical quarters
         for frac in [0.25, 0.75] {
             let x = draw_x + draw_w * frac;
-            painter.stroke(
-                Line::new(Point::new(x, draw_y), Point::new(x, draw_y + draw_h)),
-                &grid_stroke, self.grid_color,
-            ).draw();
+            painter
+                .stroke(
+                    Line::new(Point::new(x, draw_y), Point::new(x, draw_y + draw_h)),
+                    &grid_stroke,
+                    self.grid_color,
+                )
+                .draw();
         }
 
         // Waveform
@@ -399,15 +420,19 @@ impl Widget for Scope {
                 }
             }
 
-            painter.stroke(
-                &path,
-                &Stroke::new(1.5).with_caps(Cap::Round),
-                self.wave_color,
-            ).draw();
+            painter
+                .stroke(
+                    &path,
+                    &Stroke::new(1.5).with_caps(Cap::Round),
+                    self.wave_color,
+                )
+                .draw();
         }
 
         // Border
-        painter.stroke(rr, &Stroke::new(0.5), Color::from_rgb8(0x40, 0x40, 0x40)).draw();
+        painter
+            .stroke(rr, &Stroke::new(0.5), Color::from_rgb8(0x40, 0x40, 0x40))
+            .draw();
     }
 
     fn accessibility_role(&self) -> Role {

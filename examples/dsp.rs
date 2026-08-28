@@ -14,8 +14,8 @@
 //! - Scope data via triple buffer
 //! - CPAL output stream for real audio playback
 
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, SampleFormat, Stream, StreamConfig};
@@ -206,9 +206,7 @@ impl DspEngine {
                 .ok_or_else(|| "No default output device".to_string())?
         };
 
-        let supported_config = device
-            .default_output_config()
-            .map_err(|e| e.to_string())?;
+        let supported_config = device.default_output_config().map_err(|e| e.to_string())?;
         let sample_format = supported_config.sample_format();
         let config: StreamConfig = supported_config.into();
         let sample_rate = config.sample_rate.0 as f64;
@@ -217,14 +215,70 @@ impl DspEngine {
         let (scope_input, scope_output) = triple_buffer(&Vec::<f32>::new());
 
         let stream = match sample_format {
-            SampleFormat::I8 => Self::make_stream::<i8>(&device, &config, sample_rate, channels, Arc::clone(&params), scope_input),
-            SampleFormat::I16 => Self::make_stream::<i16>(&device, &config, sample_rate, channels, Arc::clone(&params), scope_input),
-            SampleFormat::I32 => Self::make_stream::<i32>(&device, &config, sample_rate, channels, Arc::clone(&params), scope_input),
-            SampleFormat::U8 => Self::make_stream::<u8>(&device, &config, sample_rate, channels, Arc::clone(&params), scope_input),
-            SampleFormat::U16 => Self::make_stream::<u16>(&device, &config, sample_rate, channels, Arc::clone(&params), scope_input),
-            SampleFormat::U32 => Self::make_stream::<u32>(&device, &config, sample_rate, channels, Arc::clone(&params), scope_input),
-            SampleFormat::F32 => Self::make_stream::<f32>(&device, &config, sample_rate, channels, Arc::clone(&params), scope_input),
-            SampleFormat::F64 => Self::make_stream::<f64>(&device, &config, sample_rate, channels, Arc::clone(&params), scope_input),
+            SampleFormat::I8 => Self::make_stream::<i8>(
+                &device,
+                &config,
+                sample_rate,
+                channels,
+                Arc::clone(&params),
+                scope_input,
+            ),
+            SampleFormat::I16 => Self::make_stream::<i16>(
+                &device,
+                &config,
+                sample_rate,
+                channels,
+                Arc::clone(&params),
+                scope_input,
+            ),
+            SampleFormat::I32 => Self::make_stream::<i32>(
+                &device,
+                &config,
+                sample_rate,
+                channels,
+                Arc::clone(&params),
+                scope_input,
+            ),
+            SampleFormat::U8 => Self::make_stream::<u8>(
+                &device,
+                &config,
+                sample_rate,
+                channels,
+                Arc::clone(&params),
+                scope_input,
+            ),
+            SampleFormat::U16 => Self::make_stream::<u16>(
+                &device,
+                &config,
+                sample_rate,
+                channels,
+                Arc::clone(&params),
+                scope_input,
+            ),
+            SampleFormat::U32 => Self::make_stream::<u32>(
+                &device,
+                &config,
+                sample_rate,
+                channels,
+                Arc::clone(&params),
+                scope_input,
+            ),
+            SampleFormat::F32 => Self::make_stream::<f32>(
+                &device,
+                &config,
+                sample_rate,
+                channels,
+                Arc::clone(&params),
+                scope_input,
+            ),
+            SampleFormat::F64 => Self::make_stream::<f64>(
+                &device,
+                &config,
+                sample_rate,
+                channels,
+                Arc::clone(&params),
+                scope_input,
+            ),
             f => return Err(format!("Unsupported sample format: {f:?}")),
         }
         .map_err(|e| e.to_string())?;

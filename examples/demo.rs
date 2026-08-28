@@ -7,19 +7,17 @@
 
 use std::sync::Arc;
 
+use xilem::Color;
 use xilem::masonry::layout::AsUnit;
 use xilem::masonry::properties::types::CrossAxisAlignment;
-use xilem::Color;
 use xilem::style::Style as _;
-use xilem::view::{flex_col, flex_row, label, FlexExt as _, FlexSpacer};
+use xilem::view::{FlexExt as _, FlexSpacer, flex_col, flex_row, label};
 use xilem::{EventLoop, WidgetView, WindowOptions, Xilem};
 
 mod dsp;
-use dsp::{list_devices, DspEngine, DspHandle, SharedParams};
+use dsp::{DspEngine, DspHandle, SharedParams, list_devices};
 
-use xilem_synth_widgets::{
-    fader, group_box, knob, param_selector, push_button, scope, LabelAlign,
-};
+use xilem_synth_widgets::{LabelAlign, fader, group_box, knob, param_selector, push_button, scope};
 
 const TEXT_COLOR: Color = Color::from_rgb8(0xDD, 0xCC, 0xCC);
 const DIM_TEXT: Color = Color::from_rgb8(0xAA, 0x99, 0x99);
@@ -93,8 +91,7 @@ fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
                                 if s.audio_started {
                                     s.dsp.stop();
                                     let device_name = s.devices.get(idx).map(|n| n.as_str());
-                                    match DspEngine::start(device_name, Arc::clone(&s.dsp.params))
-                                    {
+                                    match DspEngine::start(device_name, Arc::clone(&s.dsp.params)) {
                                         Ok(handle) => s.dsp = handle,
                                         Err(e) => {
                                             eprintln!("Failed to restart audio: {e}");
@@ -147,12 +144,7 @@ fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
                     flex_col((
                         flex_row((
                             param_selector(
-                                vec![
-                                    "Sine".into(),
-                                    "Saw".into(),
-                                    "Tri".into(),
-                                    "Pulse".into(),
-                                ],
+                                vec!["Sine".into(), "Saw".into(), "Tri".into(), "Pulse".into()],
                                 state.waveform,
                                 |s: &mut DemoState, idx| {
                                     s.waveform = idx;
@@ -164,16 +156,10 @@ fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
                                 label(format!("{:.0} Hz", state.freq1))
                                     .text_size(11.0)
                                     .color(TEXT_COLOR),
-                                knob(
-                                    20.0,
-                                    2000.0,
-                                    state.freq1,
-                                    220.0,
-                                    |s: &mut DemoState, v| {
-                                        s.freq1 = v;
-                                        s.dsp.params.freq1.store(v as f32);
-                                    },
-                                )
+                                knob(20.0, 2000.0, state.freq1, 220.0, |s: &mut DemoState, v| {
+                                    s.freq1 = v;
+                                    s.dsp.params.freq1.store(v as f32);
+                                })
                                 .step(1.0),
                                 label("Freq 1").text_size(10.0).color(DIM_TEXT),
                             ))
@@ -182,16 +168,10 @@ fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
                                 label(format!("{:.0} Hz", state.freq2))
                                     .text_size(11.0)
                                     .color(TEXT_COLOR),
-                                knob(
-                                    20.0,
-                                    2000.0,
-                                    state.freq2,
-                                    330.0,
-                                    |s: &mut DemoState, v| {
-                                        s.freq2 = v;
-                                        s.dsp.params.freq2.store(v as f32);
-                                    },
-                                )
+                                knob(20.0, 2000.0, state.freq2, 330.0, |s: &mut DemoState, v| {
+                                    s.freq2 = v;
+                                    s.dsp.params.freq2.store(v as f32);
+                                })
                                 .step(1.0),
                                 label("Freq 2").text_size(10.0).color(DIM_TEXT),
                             ))
@@ -203,16 +183,10 @@ fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
                                 label(format!("{:.0} Hz", state.lfo_range))
                                     .text_size(9.0)
                                     .color(TEXT_COLOR),
-                                knob(
-                                    2.0,
-                                    20.0,
-                                    state.lfo_range,
-                                    8.0,
-                                    |s: &mut DemoState, v| {
-                                        s.lfo_range = v;
-                                        s.dsp.params.lfo_range.store(v as f32);
-                                    },
-                                )
+                                knob(2.0, 20.0, state.lfo_range, 8.0, |s: &mut DemoState, v| {
+                                    s.lfo_range = v;
+                                    s.dsp.params.lfo_range.store(v as f32);
+                                })
                                 .step(0.5)
                                 .small(),
                                 label("Range").text_size(9.0).color(DIM_TEXT),
@@ -254,10 +228,16 @@ fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
                     "Output",
                     flex_col((
                         label(db_text).text_size(11.0).color(TEXT_COLOR),
-                        fader(-60.0, 6.0, state.volume_db, -12.0, |s: &mut DemoState, v| {
-                            s.volume_db = v;
-                            s.dsp.params.volume_db.store(v as f32);
-                        }),
+                        fader(
+                            -60.0,
+                            6.0,
+                            state.volume_db,
+                            -12.0,
+                            |s: &mut DemoState, v| {
+                                s.volume_db = v;
+                                s.dsp.params.volume_db.store(v as f32);
+                            },
+                        ),
                         label("Volume").text_size(10.0).color(DIM_TEXT),
                         push_button(state.mute, |s: &mut DemoState, v| {
                             s.mute = v;
@@ -268,31 +248,46 @@ fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
                     .gap(2.0.px()),
                 ),
                 // Scope
-                group_box::<DemoState, (), _>(
-                    "Scope",
-                    scope(Some(state.dsp.scope_source())),
-                ),
+                group_box::<DemoState, (), _>("Scope", scope(Some(state.dsp.scope_source()))),
                 // Info
                 group_box::<DemoState, (), _>(
                     "Info",
                     flex_col((
                         label("Knobs").text_size(11.0).color(TEXT_COLOR),
-                        label("  Drag up/down to adjust").text_size(10.0).color(DIM_TEXT),
-                        label("  Double-click resets to default").text_size(10.0).color(DIM_TEXT),
-                        label("  Lit ring shows delta from default").text_size(10.0).color(DIM_TEXT),
+                        label("  Drag up/down to adjust")
+                            .text_size(10.0)
+                            .color(DIM_TEXT),
+                        label("  Double-click resets to default")
+                            .text_size(10.0)
+                            .color(DIM_TEXT),
+                        label("  Lit ring shows delta from default")
+                            .text_size(10.0)
+                            .color(DIM_TEXT),
                         label("Fader").text_size(11.0).color(TEXT_COLOR),
-                        label("  Drag to adjust, defaults to -12 dB").text_size(10.0).color(DIM_TEXT),
-                        label("  Double-click resets to default").text_size(10.0).color(DIM_TEXT),
+                        label("  Drag to adjust, defaults to -12 dB")
+                            .text_size(10.0)
+                            .color(DIM_TEXT),
+                        label("  Double-click resets to default")
+                            .text_size(10.0)
+                            .color(DIM_TEXT),
                         label("Selector").text_size(11.0).color(TEXT_COLOR),
-                        label("  Click item to select").text_size(10.0).color(DIM_TEXT),
+                        label("  Click item to select")
+                            .text_size(10.0)
+                            .color(DIM_TEXT),
                         label("Button").text_size(11.0).color(TEXT_COLOR),
-                        label("  Click to toggle on/off").text_size(10.0).color(DIM_TEXT),
+                        label("  Click to toggle on/off")
+                            .text_size(10.0)
+                            .color(DIM_TEXT),
                         label("Group Box").text_size(11.0).color(TEXT_COLOR),
-                        label("  Tintable background container").text_size(10.0).color(DIM_TEXT),
+                        label("  Tintable background container")
+                            .text_size(10.0)
+                            .color(DIM_TEXT),
                     ))
                     .cross_axis_alignment(CrossAxisAlignment::Start)
                     .gap(1.0.px()),
-                ).fill().flex(1.0),
+                )
+                .fill()
+                .flex(1.0),
             ))
             .cross_axis_alignment(CrossAxisAlignment::Stretch)
             .gap(4.0.px()),
@@ -305,7 +300,6 @@ fn app_logic(state: &mut DemoState) -> impl WidgetView<DemoState> + use<> {
 
 /// Create the Xilem app
 fn main() {
-
     // If you were looking for something complicated,
     // I'm afraid I'll have to disappoint you.
     // Super clean code, isn't it?

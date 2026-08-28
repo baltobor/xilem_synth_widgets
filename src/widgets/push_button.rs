@@ -92,7 +92,13 @@ impl Widget for PushButton {
 
     fn register_children(&mut self, _ctx: &mut RegisterCtx<'_>) {}
 
-    fn update(&mut self, _ctx: &mut UpdateCtx<'_>, _props: &mut PropertiesMut<'_>, _event: &Update) {}
+    fn update(
+        &mut self,
+        _ctx: &mut UpdateCtx<'_>,
+        _props: &mut PropertiesMut<'_>,
+        _event: &Update,
+    ) {
+    }
 
     fn measure(
         &mut self,
@@ -105,15 +111,14 @@ impl Widget for PushButton {
         Length::px(BUTTON_RADIUS * 2.0 + 4.0)
     }
 
-    fn layout(
-        &mut self,
-        _ctx: &mut LayoutCtx<'_>,
-        _props: &PropertiesRef<'_>,
-        _size: Size,
-    ) {
-    }
+    fn layout(&mut self, _ctx: &mut LayoutCtx<'_>, _props: &PropertiesRef<'_>, _size: Size) {}
 
-    fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, painter: &mut Painter<'_>) {
+    fn paint(
+        &mut self,
+        ctx: &mut PaintCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        painter: &mut Painter<'_>,
+    ) {
         let size = ctx.content_box().size();
         let cx = size.width / 2.0;
         let cy = size.height / 2.0;
@@ -136,7 +141,10 @@ impl Widget for PushButton {
         };
 
         let inner = Circle::new(Point::new(cx, cy), BUTTON_RADIUS - 1.5);
-        painter.fill(inner, fill_color).fill_rule(Fill::NonZero).draw();
+        painter
+            .fill(inner, fill_color)
+            .fill_rule(Fill::NonZero)
+            .draw();
     }
 
     fn accessibility_role(&self) -> Role {

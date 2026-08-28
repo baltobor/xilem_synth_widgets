@@ -5,11 +5,13 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-use xilem::core::{MessageCtx, Mut, View, ViewMarker};
 use xilem::core::MessageResult;
+use xilem::core::{MessageCtx, Mut, View, ViewMarker};
 use xilem::{Pod, ViewCtx};
 
-use crate::widgets::level_meter::{LevelMeter as LevelMeterWidget, MeterScale, MeterStyle, Orientation};
+use crate::widgets::level_meter::{
+    LevelMeter as LevelMeterWidget, MeterScale, MeterStyle, Orientation,
+};
 
 /// A power bar / level meter that shows a value in a colored bar.
 ///
@@ -34,7 +36,9 @@ pub struct LevelMeter {
 /// Create a horizontal level meter with gradient style, dB scale (default).
 pub fn level_meter(value: f64, min: f64, max: f64) -> LevelMeter {
     LevelMeter {
-        value, min, max,
+        value,
+        min,
+        max,
         orientation: Orientation::Horizontal,
         style: MeterStyle::Gradient,
         scale: MeterScale::Db,
@@ -92,10 +96,16 @@ where
     }
 
     fn rebuild(
-        &self, prev: &Self, _: &mut (), _: &mut ViewCtx,
-        mut element: Mut<'_, Self::Element>, _: &mut State,
+        &self,
+        prev: &Self,
+        _: &mut (),
+        _: &mut ViewCtx,
+        mut element: Mut<'_, Self::Element>,
+        _: &mut State,
     ) {
-        if prev.value != self.value { LevelMeterWidget::set_value(&mut element, self.value); }
+        if prev.value != self.value {
+            LevelMeterWidget::set_value(&mut element, self.value);
+        }
         if prev.min != self.min || prev.max != self.max {
             LevelMeterWidget::set_range(&mut element, self.min, self.max);
         }
@@ -112,8 +122,11 @@ where
     }
 
     fn message(
-        &self, _: &mut (), _: &mut MessageCtx,
-        _: Mut<'_, Self::Element>, _: &mut State,
+        &self,
+        _: &mut (),
+        _: &mut MessageCtx,
+        _: Mut<'_, Self::Element>,
+        _: &mut State,
     ) -> MessageResult<Action> {
         MessageResult::Stale
     }

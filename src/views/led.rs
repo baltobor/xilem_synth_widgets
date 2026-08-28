@@ -5,8 +5,8 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-use xilem::core::{MessageCtx, Mut, View, ViewMarker};
 use xilem::core::MessageResult;
+use xilem::core::{MessageCtx, Mut, View, ViewMarker};
 use xilem::{Color, Pod, ViewCtx};
 
 use crate::widgets::led::Led as LedWidget;
@@ -47,18 +47,28 @@ where
 
     fn build(&self, ctx: &mut ViewCtx, _: &mut State) -> (Self::Element, Self::ViewState) {
         let mut w = LedWidget::new(self.active);
-        if let Some(c) = self.tint { w = w.with_tint(c); }
+        if let Some(c) = self.tint {
+            w = w.with_tint(c);
+        }
         let pod = ctx.with_action_widget(|ctx| ctx.create_pod(w));
         (pod, ())
     }
 
     fn rebuild(
-        &self, prev: &Self, _: &mut (), _: &mut ViewCtx,
-        mut element: Mut<'_, Self::Element>, _: &mut State,
+        &self,
+        prev: &Self,
+        _: &mut (),
+        _: &mut ViewCtx,
+        mut element: Mut<'_, Self::Element>,
+        _: &mut State,
     ) {
-        if prev.active != self.active { LedWidget::set_active(&mut element, self.active); }
+        if prev.active != self.active {
+            LedWidget::set_active(&mut element, self.active);
+        }
         if prev.tint != self.tint {
-            if let Some(c) = self.tint { LedWidget::set_tint(&mut element, c); }
+            if let Some(c) = self.tint {
+                LedWidget::set_tint(&mut element, c);
+            }
         }
     }
 
@@ -67,8 +77,11 @@ where
     }
 
     fn message(
-        &self, _: &mut (), _: &mut MessageCtx,
-        _: Mut<'_, Self::Element>, _: &mut State,
+        &self,
+        _: &mut (),
+        _: &mut MessageCtx,
+        _: Mut<'_, Self::Element>,
+        _: &mut State,
     ) -> MessageResult<Action> {
         MessageResult::Stale
     }

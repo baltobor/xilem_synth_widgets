@@ -5,8 +5,8 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-use xilem::core::{MessageCtx, Mut, View, ViewMarker};
 use xilem::core::MessageResult;
+use xilem::core::{MessageCtx, Mut, View, ViewMarker};
 use xilem::{Pod, ViewCtx};
 
 use crate::widgets::knob::Knob as KnobWidget;
@@ -36,12 +36,27 @@ pub fn knob<State, Action>(
     default: f64,
     on_change: impl Fn(&mut State, f64) -> Action + Send + Sync + 'static,
 ) -> Knob<impl Fn(&mut State, f64) -> Action + Send + Sync + 'static> {
-    Knob { min, max, value, default, on_change, step: 0.0, small: false, tint: None }
+    Knob {
+        min,
+        max,
+        value,
+        default,
+        on_change,
+        step: 0.0,
+        small: false,
+        tint: None,
+    }
 }
 
 impl<F> Knob<F> {
-    pub fn step(mut self, step: f64) -> Self { self.step = step; self }
-    pub fn small(mut self) -> Self { self.small = true; self }
+    pub fn step(mut self, step: f64) -> Self {
+        self.step = step;
+        self
+    }
+    pub fn small(mut self) -> Self {
+        self.small = true;
+        self
+    }
 
     pub fn tint(mut self, color: xilem::Color) -> Self {
         self.tint = Some(color);
@@ -61,24 +76,36 @@ where
     type ViewState = ();
 
     fn build(&self, ctx: &mut ViewCtx, _: &mut State) -> (Self::Element, Self::ViewState) {
-        let mut w = KnobWidget::new(self.min, self.max, self.value, self.default)
-            .with_small(self.small);
-        if self.step > 0.0 { w = w.with_step(self.step); }
-        if let Some(c) = self.tint { w = w.with_tint(c); }
+        let mut w =
+            KnobWidget::new(self.min, self.max, self.value, self.default).with_small(self.small);
+        if self.step > 0.0 {
+            w = w.with_step(self.step);
+        }
+        if let Some(c) = self.tint {
+            w = w.with_tint(c);
+        }
         let pod = ctx.with_action_widget(|ctx| ctx.create_pod(w));
         (pod, ())
     }
 
     fn rebuild(
-        &self, prev: &Self, _: &mut (), _: &mut ViewCtx,
-        mut element: Mut<'_, Self::Element>, _: &mut State,
+        &self,
+        prev: &Self,
+        _: &mut (),
+        _: &mut ViewCtx,
+        mut element: Mut<'_, Self::Element>,
+        _: &mut State,
     ) {
-        if prev.value != self.value { KnobWidget::set_value(&mut element, self.value); }
+        if prev.value != self.value {
+            KnobWidget::set_value(&mut element, self.value);
+        }
         if prev.min != self.min || prev.max != self.max {
             KnobWidget::set_range(&mut element, self.min, self.max);
         }
         if prev.tint != self.tint {
-            if let Some(c) = self.tint { KnobWidget::set_tint(&mut element, c); }
+            if let Some(c) = self.tint {
+                KnobWidget::set_tint(&mut element, c);
+            }
         }
     }
 
@@ -87,10 +114,15 @@ where
     }
 
     fn message(
-        &self, _: &mut (), message: &mut MessageCtx,
-        _: Mut<'_, Self::Element>, state: &mut State,
+        &self,
+        _: &mut (),
+        message: &mut MessageCtx,
+        _: Mut<'_, Self::Element>,
+        state: &mut State,
     ) -> MessageResult<Action> {
-        if message.take_first().is_some() { return MessageResult::Stale; }
+        if message.take_first().is_some() {
+            return MessageResult::Stale;
+        }
         match message.take_message::<f64>() {
             Some(val) => MessageResult::Action((self.on_change)(state, *val)),
             None => MessageResult::Stale,

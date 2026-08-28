@@ -8,8 +8,8 @@
 pub mod fader;
 pub mod group_box;
 pub mod knob;
+pub mod led;
+pub mod level_meter;
 pub mod param_selector;
 pub mod push_button;
 pub mod scope;
-pub mod led;
-pub mod level_meter;

@@ -5,8 +5,8 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
-use xilem::core::{MessageCtx, Mut, View, ViewMarker};
 use xilem::core::MessageResult;
+use xilem::core::{MessageCtx, Mut, View, ViewMarker};
 use xilem::{Pod, ViewCtx};
 
 use crate::widgets::push_button::PushButton as ButtonWidget;
@@ -23,7 +23,11 @@ pub fn push_button<State, Action>(
     active: bool,
     on_toggle: impl Fn(&mut State, bool) -> Action + Send + Sync + 'static,
 ) -> PushButton<impl Fn(&mut State, bool) -> Action + Send + Sync + 'static> {
-    PushButton { active, on_toggle, tint: None }
+    PushButton {
+        active,
+        on_toggle,
+        tint: None,
+    }
 }
 
 impl<F> PushButton<F> {
@@ -46,18 +50,28 @@ where
 
     fn build(&self, ctx: &mut ViewCtx, _: &mut State) -> (Self::Element, Self::ViewState) {
         let mut w = ButtonWidget::new(self.active);
-        if let Some(c) = self.tint { w = w.with_tint(c); }
+        if let Some(c) = self.tint {
+            w = w.with_tint(c);
+        }
         let pod = ctx.with_action_widget(|ctx| ctx.create_pod(w));
         (pod, ())
     }
 
     fn rebuild(
-        &self, prev: &Self, _: &mut (), _: &mut ViewCtx,
-        mut element: Mut<'_, Self::Element>, _: &mut State,
+        &self,
+        prev: &Self,
+        _: &mut (),
+        _: &mut ViewCtx,
+        mut element: Mut<'_, Self::Element>,
+        _: &mut State,
     ) {
-        if prev.active != self.active { ButtonWidget::set_active(&mut element, self.active); }
+        if prev.active != self.active {
+            ButtonWidget::set_active(&mut element, self.active);
+        }
         if prev.tint != self.tint {
-            if let Some(c) = self.tint { ButtonWidget::set_tint(&mut element, c); }
+            if let Some(c) = self.tint {
+                ButtonWidget::set_tint(&mut element, c);
+            }
         }
     }
 
@@ -66,10 +80,15 @@ where
     }
 
     fn message(
-        &self, _: &mut (), message: &mut MessageCtx,
-        _: Mut<'_, Self::Element>, state: &mut State,
+        &self,
+        _: &mut (),
+        message: &mut MessageCtx,
+        _: Mut<'_, Self::Element>,
+        state: &mut State,
     ) -> MessageResult<Action> {
-        if message.take_first().is_some() { return MessageResult::Stale; }
+        if message.take_first().is_some() {
+            return MessageResult::Stale;
+        }
         match message.take_message::<bool>() {
             Some(val) => MessageResult::Action((self.on_toggle)(state, *val)),
             None => MessageResult::Stale,

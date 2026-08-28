@@ -5,17 +5,16 @@
 //! Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //! (compatible with the Xilem licence).
 
+use xilem::Color;
 use xilem::masonry::accesskit::{Node, Role};
 use xilem::masonry::core::{
-    AccessCtx, EventCtx, LayoutCtx, MeasureCtx, PaintCtx, PointerEvent,
-    PropertiesMut, PropertiesRef, RegisterCtx, Update, UpdateCtx, Widget, WidgetId,
-    WidgetMut,
+    AccessCtx, EventCtx, LayoutCtx, MeasureCtx, PaintCtx, PointerEvent, PropertiesMut,
+    PropertiesRef, RegisterCtx, Update, UpdateCtx, Widget, WidgetId, WidgetMut,
 };
 use xilem::masonry::imaging::Painter;
 use xilem::masonry::kurbo::{Axis, Circle, Point, Size};
 use xilem::masonry::layout::{LenReq, Length};
 use xilem::masonry::peniko::Fill;
-use xilem::Color;
 
 use smallvec::SmallVec;
 use tracing::trace_span;
@@ -41,7 +40,10 @@ pub struct Led {
 
 impl Led {
     pub fn new(active: bool) -> Self {
-        Self { active, tint: DEFAULT_TINT }
+        Self {
+            active,
+            tint: DEFAULT_TINT,
+        }
     }
 
     pub fn with_tint(mut self, color: Color) -> Self {
@@ -65,15 +67,29 @@ impl Led {
 impl Widget for Led {
     type Action = ();
 
-    fn on_pointer_event(&mut self, _: &mut EventCtx<'_>, _: &mut PropertiesMut<'_>, _: &PointerEvent) {}
-    fn accepts_pointer_interaction(&self) -> bool { false }
-    fn accepts_focus(&self) -> bool { false }
+    fn on_pointer_event(
+        &mut self,
+        _: &mut EventCtx<'_>,
+        _: &mut PropertiesMut<'_>,
+        _: &PointerEvent,
+    ) {
+    }
+    fn accepts_pointer_interaction(&self) -> bool {
+        false
+    }
+    fn accepts_focus(&self) -> bool {
+        false
+    }
     fn register_children(&mut self, _: &mut RegisterCtx<'_>) {}
     fn update(&mut self, _: &mut UpdateCtx<'_>, _: &mut PropertiesMut<'_>, _: &Update) {}
 
     fn measure(
-        &mut self, _: &mut MeasureCtx<'_>, _: &PropertiesRef<'_>,
-        _axis: Axis, _: LenReq, _: Option<Length>,
+        &mut self,
+        _: &mut MeasureCtx<'_>,
+        _: &PropertiesRef<'_>,
+        _axis: Axis,
+        _: LenReq,
+        _: Option<Length>,
     ) -> Length {
         Length::px(LED_SIZE)
     }
@@ -86,7 +102,9 @@ impl Widget for Led {
         let cy = size.height / 2.0;
         let r = LED_RADIUS;
 
-        let color = if self.active { self.tint } else {
+        let color = if self.active {
+            self.tint
+        } else {
             Color::from_rgb8(OFF_COLOR_R, OFF_COLOR_G, OFF_COLOR_B)
         };
 
@@ -102,12 +120,19 @@ impl Widget for Led {
         // Positioned at upper-left of the circle to simulate a light source
         let highlight = Circle::new(Point::new(cx - r * 0.3, cy - r * 0.3), r * 0.25);
         let highlight_color = Color::from_rgba8(0xFF, 0xFF, 0xFF, 0x60); // semi-transparent white
-        painter.fill(&highlight, highlight_color).fill_rule(Fill::NonZero).draw();
+        painter
+            .fill(&highlight, highlight_color)
+            .fill_rule(Fill::NonZero)
+            .draw();
     }
 
-    fn accessibility_role(&self) -> Role { Role::Image }
+    fn accessibility_role(&self) -> Role {
+        Role::Image
+    }
     fn accessibility(&mut self, _: &mut AccessCtx<'_>, _: &PropertiesRef<'_>, _: &mut Node) {}
-    fn children_ids(&self) -> SmallVec<[WidgetId; 16]> { SmallVec::new() }
+    fn children_ids(&self) -> SmallVec<[WidgetId; 16]> {
+        SmallVec::new()
+    }
 
     fn make_trace_span(&self, id: WidgetId) -> tracing::Span {
         trace_span!("Led", id = id.trace())

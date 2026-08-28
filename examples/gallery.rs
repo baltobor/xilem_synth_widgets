@@ -7,24 +7,24 @@
 //!
 //! Widget Gallery — demonstrates every widget and its styling options.
 
+use std::f64::consts::TAU;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
-use std::f64::consts::TAU;
 
 use xilem::tokio::time;
 
+use xilem::Color;
 use xilem::core::fork;
 use xilem::masonry::layout::AsUnit;
 use xilem::masonry::properties::types::CrossAxisAlignment;
-use xilem::Color;
 use xilem::style::Style as _;
-use xilem::view::{flex_col, flex_row, label, task, FlexExt as _, FlexSpacer};
+use xilem::view::{FlexExt as _, FlexSpacer, flex_col, flex_row, label, task};
 use xilem::{EventLoop, WidgetView, WindowOptions, Xilem};
 
 use xilem_synth_widgets::{
-    fader, group_box, knob, led, level_meter, param_selector, push_button, scope,
-    LabelAlign, ScopeSource,
+    LabelAlign, ScopeSource, fader, group_box, knob, led, level_meter, param_selector, push_button,
+    scope,
 };
 
 // ── colors ──────────────────────────────────────────────────────────────
@@ -145,47 +145,76 @@ fn app_logic(state: &mut GalleryState) -> impl WidgetView<GalleryState> + use<> 
                         group_box::<GalleryState, (), _>(
                             "Ivory",
                             label("bright").text_size(9.0).color(DIM),
-                        ).tint(IVORY).fill().flex(1.0),
+                        )
+                        .tint(IVORY)
+                        .fill()
+                        .flex(1.0),
                         group_box::<GalleryState, (), _>(
                             "Sand",
                             label("creme").text_size(9.0).color(DIM),
-                        ).tint(SAND).fill().flex(1.0),
+                        )
+                        .tint(SAND)
+                        .fill()
+                        .flex(1.0),
                         group_box::<GalleryState, (), _>(
                             "Rose",
                             label("bright").text_size(9.0).color(DIM),
-                        ).tint(ROSE).fill().flex(1.0),
+                        )
+                        .tint(ROSE)
+                        .fill()
+                        .flex(1.0),
                         group_box::<GalleryState, (), _>(
                             "Lavender",
                             label("bright").text_size(9.0).color(DIM),
-                        ).tint(LAVENDER).fill().flex(1.0),
+                        )
+                        .tint(LAVENDER)
+                        .fill()
+                        .flex(1.0),
                         group_box::<GalleryState, (), _>(
                             "Sky",
                             label("bright").text_size(9.0).color(DIM),
-                        ).tint(SKY).fill().flex(1.0),
+                        )
+                        .tint(SKY)
+                        .fill()
+                        .flex(1.0),
                         group_box::<GalleryState, (), _>(
                             "Teal",
                             label("dark").text_size(9.0).color(DIM),
-                        ).tint(TEAL).fill().flex(1.0),
+                        )
+                        .tint(TEAL)
+                        .fill()
+                        .flex(1.0),
                         group_box::<GalleryState, (), _>(
                             "Slate",
                             label("dark").text_size(9.0).color(DIM),
-                        ).tint(SLATE).fill().flex(1.0),
+                        )
+                        .tint(SLATE)
+                        .fill()
+                        .flex(1.0),
                         group_box::<GalleryState, (), _>(
                             "Charcoal",
                             label("dark").text_size(9.0).color(DIM),
-                        ).tint(CHARCOAL).fill().flex(1.0),
+                        )
+                        .tint(CHARCOAL)
+                        .fill()
+                        .flex(1.0),
                         group_box::<GalleryState, (), _>(
                             "Burgundy",
                             label("dark").text_size(9.0).color(DIM),
-                        ).tint(BURGUNDY).fill().flex(1.0),
+                        )
+                        .tint(BURGUNDY)
+                        .fill()
+                        .flex(1.0),
                         group_box::<GalleryState, (), _>(
                             "Olive",
                             label("dark").text_size(9.0).color(DIM),
-                        ).tint(OLIVE).fill().flex(1.0),
+                        )
+                        .tint(OLIVE)
+                        .fill()
+                        .flex(1.0),
                     ))
                     .gap(4.0.px()),
                 ),
-
                 // ─── Row 2: Interactive widgets ─────────────────────
                 flex_row((
                     // Knobs
@@ -194,33 +223,47 @@ fn app_logic(state: &mut GalleryState) -> impl WidgetView<GalleryState> + use<> 
                         flex_row((
                             flex_col((
                                 label(format!("{:.2}", state.knob_a))
-                                    .text_size(10.0).color(TEXT),
-                                knob(0.0, 1.0, state.knob_a, 0.5,
-                                    |s: &mut GalleryState, v| { s.knob_a = v; }),
+                                    .text_size(10.0)
+                                    .color(TEXT),
+                                knob(0.0, 1.0, state.knob_a, 0.5, |s: &mut GalleryState, v| {
+                                    s.knob_a = v;
+                                }),
                                 label("Normal").text_size(9.0).color(DIM),
-                            )).gap(1.0.px()),
+                            ))
+                            .gap(1.0.px()),
                             flex_col((
                                 label(format!("{:.0} Hz", state.knob_b))
-                                    .text_size(10.0).color(TEXT),
-                                knob(20.0, 2000.0, state.knob_b, 220.0,
-                                    |s: &mut GalleryState, v| { s.knob_b = v; })
-                                    .step(1.0),
+                                    .text_size(10.0)
+                                    .color(TEXT),
+                                knob(
+                                    20.0,
+                                    2000.0,
+                                    state.knob_b,
+                                    220.0,
+                                    |s: &mut GalleryState, v| {
+                                        s.knob_b = v;
+                                    },
+                                )
+                                .step(1.0),
                                 label("Stepped").text_size(9.0).color(DIM),
-                            )).gap(1.0.px()),
+                            ))
+                            .gap(1.0.px()),
                             flex_col((
                                 label(format!("{:.2}", state.knob_c))
-                                    .text_size(10.0).color(TEXT),
-                                knob(0.0, 1.0, state.knob_c, 0.75,
-                                    |s: &mut GalleryState, v| { s.knob_c = v; })
-                                    .small()
-                                    .tint(TEAL),
+                                    .text_size(10.0)
+                                    .color(TEXT),
+                                knob(0.0, 1.0, state.knob_c, 0.75, |s: &mut GalleryState, v| {
+                                    s.knob_c = v;
+                                })
+                                .small()
+                                .tint(TEAL),
                                 label("Small").text_size(9.0).color(DIM),
-                            )).gap(1.0.px()),
+                            ))
+                            .gap(1.0.px()),
                         ))
                         .gap(8.0.px()),
                     )
                     .tint(SLATE),
-
                     // Fader
                     group_box(
                         "Fader",
@@ -229,16 +272,24 @@ fn app_logic(state: &mut GalleryState) -> impl WidgetView<GalleryState> + use<> 
                                 "-inf dB".into()
                             } else {
                                 format!("{:.1} dB", state.fader_val)
-                            }).text_size(10.0).color(TEXT),
-                            fader(-60.0, 6.0, state.fader_val, -12.0,
-                                |s: &mut GalleryState, v| { s.fader_val = v; })
-                                .tint(TEAL),
+                            })
+                            .text_size(10.0)
+                            .color(TEXT),
+                            fader(
+                                -60.0,
+                                6.0,
+                                state.fader_val,
+                                -12.0,
+                                |s: &mut GalleryState, v| {
+                                    s.fader_val = v;
+                                },
+                            )
+                            .tint(TEAL),
                             label("Volume").text_size(9.0).color(DIM),
                         ))
                         .gap(2.0.px()),
                     )
                     .tint(CHARCOAL),
-
                     // Selector & Bool
                     group_box(
                         "Selectors",
@@ -247,46 +298,59 @@ fn app_logic(state: &mut GalleryState) -> impl WidgetView<GalleryState> + use<> 
                                 param_selector(
                                     vec!["Sine".into(), "Saw".into(), "Tri".into(), "Pulse".into()],
                                     state.selector_idx,
-                                    |s: &mut GalleryState, idx| { s.selector_idx = idx; },
-                                ).label_align(LabelAlign::Left),
+                                    |s: &mut GalleryState, idx| {
+                                        s.selector_idx = idx;
+                                    },
+                                )
+                                .label_align(LabelAlign::Left),
                                 label("Waveform").text_size(9.0).color(DIM),
-                            )).gap(2.0.px()),
+                            ))
+                            .gap(2.0.px()),
                             flex_col((
                                 param_selector(
                                     vec!["Off".into(), "On".into()],
                                     state.bool_idx,
-                                    |s: &mut GalleryState, idx| { s.bool_idx = idx; },
-                                ).label_align(LabelAlign::Right)
-                                    .tint(TEAL),
+                                    |s: &mut GalleryState, idx| {
+                                        s.bool_idx = idx;
+                                    },
+                                )
+                                .label_align(LabelAlign::Right)
+                                .tint(TEAL),
                                 label("Bool").text_size(9.0).color(DIM),
-                            )).gap(2.0.px()),
+                            ))
+                            .gap(2.0.px()),
                         ))
                         .gap(8.0.px()),
                     )
                     .tint(OLIVE),
-
                     // Push Buttons & LEDs
                     group_box(
                         "Buttons",
                         flex_col((
                             flex_row((
                                 flex_col((
-                                    push_button(state.push_a,
-                                        |s: &mut GalleryState, v| { s.push_a = v; }),
+                                    push_button(state.push_a, |s: &mut GalleryState, v| {
+                                        s.push_a = v;
+                                    }),
                                     label("Default").text_size(9.0).color(DIM),
-                                )).gap(2.0.px()),
+                                ))
+                                .gap(2.0.px()),
                                 flex_col((
-                                    push_button(state.push_b,
-                                        |s: &mut GalleryState, v| { s.push_b = v; })
-                                        .tint(TEAL),
+                                    push_button(state.push_b, |s: &mut GalleryState, v| {
+                                        s.push_b = v;
+                                    })
+                                    .tint(TEAL),
                                     label("Teal").text_size(9.0).color(DIM),
-                                )).gap(2.0.px()),
+                                ))
+                                .gap(2.0.px()),
                                 flex_col((
-                                    push_button(state.push_c,
-                                        |s: &mut GalleryState, v| { s.push_c = v; })
-                                        .tint(ROSE),
+                                    push_button(state.push_c, |s: &mut GalleryState, v| {
+                                        s.push_c = v;
+                                    })
+                                    .tint(ROSE),
                                     label("Rose").text_size(9.0).color(DIM),
-                                )).gap(2.0.px()),
+                                ))
+                                .gap(2.0.px()),
                             ))
                             .gap(6.0.px()),
                             FlexSpacer::Fixed(4.0.px()),
@@ -303,7 +367,6 @@ fn app_logic(state: &mut GalleryState) -> impl WidgetView<GalleryState> + use<> 
                         .gap(2.0.px()),
                     )
                     .tint(BURGUNDY),
-
                     // Scope
                     group_box::<GalleryState, (), _>(
                         "Scope",
@@ -313,7 +376,6 @@ fn app_logic(state: &mut GalleryState) -> impl WidgetView<GalleryState> + use<> 
                 ))
                 .cross_axis_alignment(CrossAxisAlignment::Stretch)
                 .gap(4.0.px()),
-
                 // ─── Row 3: Level Meters ────────────────────────────
                 flex_row((
                     group_box::<GalleryState, (), _>(
@@ -322,11 +384,13 @@ fn app_logic(state: &mut GalleryState) -> impl WidgetView<GalleryState> + use<> 
                             flex_row((
                                 label("H").text_size(9.0).color(DIM),
                                 level_meter(meter_a, -60.0, 6.0),
-                            )).gap(4.0.px()),
+                            ))
+                            .gap(4.0.px()),
                             flex_row((
                                 label("H").text_size(9.0).color(DIM),
                                 level_meter(meter_b, -60.0, 6.0),
-                            )).gap(4.0.px()),
+                            ))
+                            .gap(4.0.px()),
                             FlexSpacer::Fixed(4.0.px()),
                             flex_row((
                                 level_meter(meter_c, -60.0, 6.0).vertical(),
@@ -338,18 +402,19 @@ fn app_logic(state: &mut GalleryState) -> impl WidgetView<GalleryState> + use<> 
                         .gap(2.0.px()),
                     )
                     .tint(SLATE),
-
                     group_box::<GalleryState, (), _>(
                         "Level Meters — Tint",
                         flex_col((
                             flex_row((
                                 label("H").text_size(9.0).color(DIM),
                                 level_meter(meter_a, -60.0, 6.0).tint(),
-                            )).gap(4.0.px()),
+                            ))
+                            .gap(4.0.px()),
                             flex_row((
                                 label("H").text_size(9.0).color(DIM),
                                 level_meter(meter_b, -60.0, 6.0).tint(),
-                            )).gap(4.0.px()),
+                            ))
+                            .gap(4.0.px()),
                             FlexSpacer::Fixed(4.0.px()),
                             flex_row((
                                 level_meter(meter_c, -60.0, 6.0).vertical().tint(),
@@ -361,7 +426,6 @@ fn app_logic(state: &mut GalleryState) -> impl WidgetView<GalleryState> + use<> 
                         .gap(2.0.px()),
                     )
                     .tint(CHARCOAL),
-
                     FlexSpacer::Flex(1.0),
                 ))
                 .cross_axis_alignment(CrossAxisAlignment::Stretch)
@@ -377,7 +441,9 @@ fn app_logic(state: &mut GalleryState) -> impl WidgetView<GalleryState> + use<> 
                 let mut interval = time::interval(Duration::from_millis(33));
                 loop {
                     interval.tick().await;
-                    let Ok(()) = proxy.message(()) else { break; };
+                    let Ok(()) = proxy.message(()) else {
+                        break;
+                    };
                 }
             },
             |state: &mut GalleryState, ()| {
